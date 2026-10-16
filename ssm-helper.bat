@@ -1,5 +1,5 @@
 @echo off
-title Ambiente de QA
+title SSM Helper
 echo =======================================================
 echo Iniciando ambiente WSL (Ubuntu)...
 echo =======================================================
@@ -44,7 +44,7 @@ echo Preparando para iniciar o shell. Aguarde...
 timeout /t 2 /nobreak >nul
 
 rem Extract bash section, save to temp file and run (pipe breaks interactive read)
-%WSL_CMD% bash -c "export CONFIG_FILE='$(wslpath '%~dp0config.yaml')'; sed -n '/^#BASH_START/,\$p' '$(wslpath '%~f0')' | sed 's/\r$//' > /tmp/acesso_ssm_qa.sh && bash /tmp/acesso_ssm_qa.sh; rm -f /tmp/acesso_ssm_qa.sh"
+%WSL_CMD% bash -c "export CONFIG_FILE='$(wslpath '%~dp0config.yaml')'; sed -n '/^#BASH_START/,\$p' '$(wslpath '%~f0')' | sed 's/\r$//' > /tmp/ssm-helper.sh && bash /tmp/ssm-helper.sh; rm -f /tmp/ssm-helper.sh"
 
 echo.
 echo Sessao finalizada.
@@ -65,12 +65,12 @@ NC='\033[0m'
 # Profiles come only from config.yaml: they are written to a dedicated AWS CLI
 # config file, so profiles in ~/.aws/config and ~/.aws/credentials are ignored.
 AWS_DIR="$HOME/.aws"
-export AWS_CONFIG_FILE="$AWS_DIR/acesso-ssm-qa-config"
-export AWS_SHARED_CREDENTIALS_FILE="$AWS_DIR/acesso-ssm-qa-credentials"
+export AWS_CONFIG_FILE="$AWS_DIR/ssm-helper-config"
+export AWS_SHARED_CREDENTIALS_FILE="$AWS_DIR/ssm-helper-credentials"
 unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 
 # Dependency installation (fixed)
-INSTALL_DIR="/tmp/acesso-ssm-qa-install"
+INSTALL_DIR="/tmp/ssm-helper-install"
 AWS_CLI_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
 AWS_CLI_ZIP="awscliv2.zip"
 SSM_PLUGIN_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb"
@@ -471,7 +471,7 @@ run_ssm_tunnel() {
 }
 
 setup_wsl_browser() {
-    local browser_helper="/tmp/access-qa-ssm-open-browser.sh"
+    local browser_helper="/tmp/ssm-helper-open-browser.sh"
 
     if ! grep -qi microsoft /proc/version 2>/dev/null; then
         return
