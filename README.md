@@ -21,7 +21,7 @@ O script instala sozinho as dependências que faltarem no Ubuntu. Para isso, ele
 1. Clone o repositório ou baixe os arquivos.
 2. Copie `config.yaml.example` para `config.yaml`, na mesma pasta do `.bat`.
 3. Preencha o `config.yaml` com os dados reais (veja [Configuração](#configuração)).
-4. Dê dois cliques em `access_qa_ssm.bat`.
+4. Dê dois cliques em `ssm-helper.bat`.
 
 > O `config.yaml` está no `.gitignore` e **não deve ser versionado**.
 
@@ -117,7 +117,7 @@ Para abrir a aplicação pelo domínio real em vez de `localhost`, por exemplo p
 
 Os perfis vêm **apenas** do `config.yaml`. A cada execução, o script:
 
-- gera um arquivo dedicado do AWS CLI em `~/.aws/acesso-ssm-qa-config`, dentro do WSL;
+- gera um arquivo dedicado do AWS CLI em `~/.aws/ssm-helper-config`, dentro do WSL;
 - aponta `AWS_CONFIG_FILE` e `AWS_SHARED_CREDENTIALS_FILE` para arquivos próprios;
 - ignora `AWS_PROFILE` e as credenciais definidas em variáveis de ambiente.
 
