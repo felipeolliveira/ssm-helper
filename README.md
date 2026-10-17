@@ -42,13 +42,15 @@ profiles:
 
 targets:
   qa-web:
+    PROFILE: "qa-admin"
     SSM_TARGET: "i-0123456789abcdef0"
     SSM_REGION: "us-east-1"
     SSM_DOCUMENT: "AWS-StartPortForwardingSessionToRemoteHost"
     SSM_REMOTE_HOST: "internal-meu-alb-qa-0000000000.us-east-1.elb.amazonaws.com"
     SSM_REMOTE_PORT: "443"
     SSM_LOCAL_PORT: "443"
-    AVAILABLE_LINKS: "qa.example.com api.qa.example.com"
+    DNS_HOSTS: "qa.example.com api.qa.example.com"
+    OPEN_URLS: "qa.example.com"
 ```
 
 ### `variables`
@@ -70,17 +72,19 @@ Cada chave é o nome de um perfil AWS. O nome aceita só letras, números, `.`, 
 
 ### `targets`
 
-Cada chave é o nome de um destino de túnel.
+Cada chave é o nome de um destino de túnel. O nome aceita só letras, números, `.`, `_` e `-`.
 
 | Campo | Obrigatório | Descrição |
 |---|---|---|
+| `PROFILE` | Sim | Perfil usado para conectar neste target. Deve existir em `profiles` |
 | `SSM_TARGET` | Sim | ID da instância EC2 com o SSM Agent, usada como ponte |
-| `SSM_REGION` | Não | Região da instância. Se ficar vazio, usa a `AWS_SSO_REGION` do perfil escolhido |
+| `SSM_REGION` | Não | Região da instância. Se ficar vazio, usa a `AWS_SSO_REGION` do perfil do target |
 | `SSM_DOCUMENT` | Sim | Documento SSM, normalmente `AWS-StartPortForwardingSessionToRemoteHost` |
 | `SSM_REMOTE_HOST` | Sim | Host de destino, acessível a partir da instância |
 | `SSM_REMOTE_PORT` | Sim | Porta no host de destino |
 | `SSM_LOCAL_PORT` | Sim | Porta local exposta na sua máquina |
-| `AVAILABLE_LINKS` | Não | Links exibidos ao conectar, separados por espaço |
+| `DNS_HOSTS` | Não | Domínios que o Chrome resolve para o túnel, separados por espaço. Aceita curinga, como `*.qa.example.com` (veja [Acessar pelo navegador](#acessar-pelo-navegador-com-o-domínio-original)) |
+| `OPEN_URLS` | Não | URLs abertas em abas no Chrome ao conectar, separadas por espaço. Sem `http(s)://`, usa `https://` |
 
 O script valida o arquivo ao iniciar e lista os campos ausentes ou inválidos, se houver.
 
@@ -96,22 +100,33 @@ Ao abrir o `.bat`, o menu principal mostra:
 0) Sair
 ```
 
-- **Conectar**: você escolhe o perfil e o target. Se a sessão SSO estiver expirada, o login é renovado automaticamente pelo navegador do Windows. O túnel fica aberto até você apertar `Ctrl+C`.
+- **Conectar**: você escolhe só o target. O perfil vem do `PROFILE` do target e aparece ao lado do nome:
+
+  ```
+       Target      | Perfil
+    1) qa-web      | (qa-admin)
+    2) qa-database | (qa-admin)
+    0) Voltar
+  ```
+
+  Se a sessão SSO estiver expirada, o login é renovado automaticamente pelo navegador do Windows. Se o target tiver `DNS_HOSTS` ou `OPEN_URLS`, o script pergunta se deve abrir o Chrome já apontado para o túnel. O túnel fica aberto até você apertar `Ctrl+C`.
 - **Login SSO**: faz o login de um perfil sem abrir túnel.
 - **Visualizar perfis / targets**: mostra o que está no `config.yaml`. Para alterar, edite o arquivo.
 
 ### Portas abaixo de 1024
 
-Se `SSM_LOCAL_PORT` for menor que 1024 (por exemplo, `443`), o túnel roda com `sudo` e pode pedir a senha do Linux.
+Se `SSM_LOCAL_PORT` for menor que 1024 (por exemplo, `443`), o túnel roda com `sudo` e pode pedir a senha do Linux. Para targets acessados pelo Chrome (veja abaixo), dá para usar uma porta acima de 1024, como `8443`, e evitar o `sudo`. As URLs continuam as mesmas, sem porta.
 
-### Acessar pelo navegador com o hostname original
+### Acessar pelo navegador com o domínio original
 
-Para abrir a aplicação pelo domínio real em vez de `localhost`, por exemplo por causa de certificados TLS ou CORS, aponte os domínios para `127.0.0.1` no arquivo `C:\Windows\System32\drivers\etc\hosts` do Windows:
+As aplicações precisam ser abertas pelo domínio real, e não por `localhost`, por causa do certificado TLS e de CORS. Para isso, o domínio precisa apontar para o túnel local.
 
-```
-127.0.0.1 qa.example.com
-127.0.0.1 api.qa.example.com
-```
+Ao conectar em um target que tem `DNS_HOSTS` ou `OPEN_URLS`, o script pergunta se deve abrir o Chrome. Se a resposta for sim, ele espera o túnel ficar pronto e abre uma **instância separada do Chrome**, com uma aba para cada URL de `OPEN_URLS`. Essa instância:
+
+- usa o flag `--host-rules` para mapear cada domínio de `DNS_HOSTS` para `127.0.0.1:<SSM_LOCAL_PORT>`, só dentro dela. Inclua ali também os domínios que a aplicação chama por baixo, como o da API;
+- tem perfil próprio por target (`%LOCALAPPDATA%\ssm-helper\chrome-<target>`), então não fecha nem altera o seu Chrome normal. Na primeira vez, faça login nas aplicações dentro dessa janela.
+
+Não é preciso permissão de administrador nem mexer no arquivo `hosts` do Windows. Se puder editá-lo, apontar os domínios para `127.0.0.1` em `C:\Windows\System32\drivers\etc\hosts` continua sendo uma alternativa.
 
 ## Como os perfis AWS são tratados
 
@@ -133,3 +148,5 @@ Por isso, os perfis do seu `~/.aws/config` e `~/.aws/credentials` não interfere
 | "Falha ao verificar acesso AWS (STS)" | Você não tem acesso à role/conta configurada no perfil |
 | O navegador não abre no login SSO | Copie o link exibido no terminal e abra manualmente no Windows |
 | Erro de porta em uso ao conectar | Outro processo usa `SSM_LOCAL_PORT`. Encerre-o ou mude a porta |
+| "Não foi possível abrir o Chrome" | O Chrome não está instalado ou foi bloqueado. Rode no PowerShell o comando exibido no terminal |
+| O Chrome abre, mas não respeita o mapeamento | Já havia uma janela aberta com o mesmo perfil de target. Feche essa janela e conecte de novo |

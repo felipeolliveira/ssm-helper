@@ -15,18 +15,22 @@ profiles:
 
 targets:
   qa-web:
+    PROFILE: "qa-admin"
     SSM_TARGET: "i-0123456789abcdef0"
     SSM_REGION: "us-east-1" # opcional; se vazio, usa AWS_SSO_REGION do perfil
     SSM_DOCUMENT: "AWS-StartPortForwardingSessionToRemoteHost"
     SSM_REMOTE_HOST: "internal-meu-alb-qa-0000000000.us-east-1.elb.amazonaws.com"
     SSM_REMOTE_PORT: "443"
     SSM_LOCAL_PORT: "443"
-    AVAILABLE_LINKS: "qa.example.com api.qa.example.com"
+    DNS_HOSTS: "qa.example.com api.qa.example.com"
+    OPEN_URLS: "qa.example.com"
   qa-database:
+    PROFILE: "qa-admin"
     SSM_TARGET: "i-0123456789abcdef0"
     SSM_REGION: "us-east-1" # opcional; se vazio, usa AWS_SSO_REGION do perfil
     SSM_DOCUMENT: "AWS-StartPortForwardingSessionToRemoteHost"
     SSM_REMOTE_HOST: "meu-banco-qa.xxxxxxxxxxxx.us-east-1.rds.amazonaws.com"
     SSM_REMOTE_PORT: "5432"
     SSM_LOCAL_PORT: "5439"
-    AVAILABLE_LINKS: ""
+    DNS_HOSTS: ""
+    OPEN_URLS: ""
