@@ -128,6 +128,15 @@ Ao conectar em um target que tem `DNS_HOSTS` ou `OPEN_URLS`, o script pergunta s
 
 Não é preciso permissão de administrador nem mexer no arquivo `hosts` do Windows. Se puder editá-lo, apontar os domínios para `127.0.0.1` em `C:\Windows\System32\drivers\etc\hosts` continua sendo uma alternativa.
 
+#### Aviso "sinalização de linha de comando não suportada"
+
+Ao abrir, essa janela do Chrome mostra uma barra com o aviso *"Você está usando uma sinalização de linha de comando não suportada: --host-rules=... A estabilidade e a segurança serão afetadas."*. Isso é esperado, e o mapeamento funciona normalmente.
+
+- O Chrome mostra esse aviso para qualquer flag que redirecione tráfego. Tanto `--host-rules` quanto `--host-resolver-rules` estão nessa lista ([bad_flags_prompt.cc](https://chromium.googlesource.com/chromium/src/+/main/chrome/browser/ui/startup/bad_flags_prompt.cc)).
+- O aviso vale só para essa janela separada. O seu Chrome normal não é afetado.
+- Dá para fechar a barra no **X**, mas ela volta sempre que o script abrir a janela.
+- Desligar o aviso exige a política `CommandLineFlagSecurityWarningsEnabled` no registro do Windows. Isso esconde o aviso para qualquer flag em todo o Chrome e costuma ser bloqueado pela TI em ambientes corporativos, então não é recomendado.
+
 ## Como os perfis AWS são tratados
 
 Os perfis vêm **apenas** do `config.yaml`. A cada execução, o script:
@@ -150,3 +159,4 @@ Por isso, os perfis do seu `~/.aws/config` e `~/.aws/credentials` não interfere
 | Erro de porta em uso ao conectar | Outro processo usa `SSM_LOCAL_PORT`. Encerre-o ou mude a porta |
 | "Não foi possível abrir o Chrome" | O Chrome não está instalado ou foi bloqueado. Rode no PowerShell o comando exibido no terminal |
 | O Chrome abre, mas não respeita o mapeamento | Já havia uma janela aberta com o mesmo perfil de target. Feche essa janela e conecte de novo |
+| Aviso "sinalização de linha de comando não suportada" no Chrome | Esperado ao usar `--host-rules`. Veja [o aviso](#aviso-sinalização-de-linha-de-comando-não-suportada) |
