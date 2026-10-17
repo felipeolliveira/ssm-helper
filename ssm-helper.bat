@@ -58,6 +58,7 @@ exit /b
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 RED='\033[0;31m'
 NC='\033[0m'
 
@@ -77,6 +78,11 @@ SSM_PLUGIN_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/latest
 SSM_PLUGIN_DEB="session-manager-plugin.deb"
 YQ_URL="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64"
 YQ_BIN="yq"
+
+# Chrome opened with --host-rules (fixed)
+POWERSHELL_EXE="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+CHROME_PROFILE_DIR="ssm-helper"
+BROWSER_WAIT_SECONDS=90
 
 # TUI labels (fixed)
 PROFILE_MENU_TITLE="Escolha o Perfil AWS"
@@ -122,12 +128,18 @@ MSG_EXITING="Saindo..."
 TARGETS_VIEW_TITLE="Targets configurados"
 MSG_TARGETS_EDIT_HINT="Para adicionar, remover ou alterar targets, edite o arquivo config.yaml (mesma pasta do .bat)."
 TARGET_VIEW_NAME="  Nome: %s"
+TARGET_VIEW_PROFILE="  Perfil: %s"
 TARGET_VIEW_INSTANCE="  Instância (SSM_TARGET): %s"
 TARGET_VIEW_DOCUMENT="  Documento: %s"
 TARGET_VIEW_REMOTE="  Host remoto: %s"
 TARGET_VIEW_PORTS="  Portas (remota → local): %s → %s"
 TARGET_VIEW_REGION="  Região: %s"
 TARGET_VIEW_REGION_DEFAULT="(região do perfil)"
+TARGET_VIEW_DNS="  Domínios no Chrome (DNS_HOSTS): %s"
+TARGET_VIEW_URLS="  URLs abertas (OPEN_URLS): %s"
+TARGET_VIEW_EMPTY="-"
+TARGET_TABLE_HEADER_TARGET="Target"
+TARGET_TABLE_HEADER_PROFILE="Perfil"
 SSM_CONNECT_TITLE="Conexão SSM"
 SSM_CONNECT_PROFILE="  Perfil: %s"
 SSM_CONNECT_TARGET="  Target: %s"
@@ -135,8 +147,14 @@ SSM_CONNECT_PORT="  Porta local: %s"
 SSM_CONNECT_REGION="  Região: %s"
 SSM_CONNECT_SUDO="  • Pode ser necessário sudo (senha Linux) para a porta %s"
 SSM_CONNECT_STOP="  • Ctrl+C encerra o túnel"
-SSM_CONNECT_LINKS_TITLE="  Links disponíveis:"
+SSM_CONNECT_DNS_TITLE="  Domínios mapeados no Chrome:"
+SSM_CONNECT_URLS_TITLE="  URLs:"
 SSM_CONNECT_LINK_ITEM="    • %s"
+PROMPT_OPEN_BROWSER="Abrir o Chrome apontando para o túnel? (S/n): "
+MSG_BROWSER_WAITING="O Chrome será aberto quando o túnel estiver pronto."
+MSG_BROWSER_OPENED="Chrome aberto apontando para o túnel."
+MSG_BROWSER_TIMEOUT="O túnel não ficou pronto a tempo. O Chrome não foi aberto."
+MSG_BROWSER_OPEN_FAILED="Não foi possível abrir o Chrome. Execute manualmente no PowerShell:"
 EXTERNAL_TITLE_SSO="Login SSO — AWS CLI"
 EXTERNAL_TITLE_SSM="Túnel SSM — Session Manager"
 MSG_SSO_PROCESS_HINT="O navegador do Windows será aberto. Aguarde e conclua a autenticação."
@@ -201,13 +219,15 @@ load_profile_sso_settings() {
 
 load_target_ssm_settings() {
     local target_name="$1"
+    TARGET_PROFILE=$(yq_get_target_field "$target_name" PROFILE)
     SSM_TARGET=$(yq_get_target_field "$target_name" SSM_TARGET)
     SSM_REGION=$(yq_get_target_field "$target_name" SSM_REGION)
     SSM_DOCUMENT=$(yq_get_target_field "$target_name" SSM_DOCUMENT)
     SSM_REMOTE_HOST=$(yq_get_target_field "$target_name" SSM_REMOTE_HOST)
     SSM_REMOTE_PORT=$(yq_get_target_field "$target_name" SSM_REMOTE_PORT)
     SSM_LOCAL_PORT=$(yq_get_target_field "$target_name" SSM_LOCAL_PORT)
-    AVAILABLE_LINKS=$(yq_get_target_field "$target_name" AVAILABLE_LINKS)
+    DNS_HOSTS=$(yq_get_target_field "$target_name" DNS_HOSTS)
+    OPEN_URLS=$(yq_get_target_field "$target_name" OPEN_URLS)
     SSM_PARAMETERS="{\"host\":[\"${SSM_REMOTE_HOST}\"],\"portNumber\":[\"${SSM_REMOTE_PORT}\"],\"localPortNumber\":[\"${SSM_LOCAL_PORT}\"]}"
 }
 
@@ -221,22 +241,57 @@ resolve_ssm_region() {
     fi
 }
 
-print_available_links() {
-    local links="$1"
+# Prints a titled list; with "url" as third argument, items are shown as URLs
+print_link_list() {
+    local title="$1"
+    local as_url="$3"
+    local links
     local link
 
-    if is_config_value_empty "$links"; then
+    read -ra links <<< "$2"
+    if [ ${#links[@]} -eq 0 ]; then
         return
     fi
 
-    echo -e "${CYAN}${SSM_CONNECT_LINKS_TITLE}${NC}"
-    for link in $links; do
-        if [[ "$link" == http://* || "$link" == https://* ]]; then
-            printf "${CYAN}${SSM_CONNECT_LINK_ITEM}${NC}\n" "$link"
-        else
-            printf "${CYAN}${SSM_CONNECT_LINK_ITEM}${NC}\n" "https://${link}"
+    echo -e "${CYAN}${title}${NC}"
+    for link in "${links[@]}"; do
+        if [ "$as_url" = "url" ]; then
+            link=$(link_to_url "$link")
         fi
+        printf "${CYAN}${SSM_CONNECT_LINK_ITEM}${NC}\n" "$link"
     done
+}
+
+link_to_url() {
+    local link="$1"
+
+    if [[ "$link" == http://* || "$link" == https://* ]]; then
+        echo "$link"
+    else
+        echo "https://${link}"
+    fi
+}
+
+link_to_host() {
+    local host="${1#*://}"
+    host="${host%%/*}"
+    echo "${host%%:*}"
+}
+
+# Chrome --host-rules value mapping each DNS_HOSTS entry to the local tunnel port
+build_chrome_host_rules() {
+    local local_port="$1"
+    local hosts
+    local host
+    local rules=()
+
+    read -ra hosts <<< "$DNS_HOSTS"
+    for host in "${hosts[@]}"; do
+        rules+=("MAP $(link_to_host "$host") 127.0.0.1:${local_port}")
+    done
+
+    local IFS=","
+    echo "${rules[*]}"
 }
 
 list_config_profiles() {
@@ -302,6 +357,7 @@ load_and_validate_config() {
         AWS_SSO_ROLE_NAME
     )
     local required_target_fields=(
+        PROFILE
         SSM_TARGET
         SSM_DOCUMENT
         SSM_REMOTE_HOST
@@ -349,10 +405,35 @@ load_and_validate_config() {
         else
             local target_name
             local field
+            local target_profile
+            local links
+            local link
+            local link_pattern='^[A-Za-z0-9._~:/?#&=%+-]+$'
+            local dns_pattern='^[A-Za-z0-9._~:/?#&=%+*-]+$'
             for target_name in "${targets[@]}"; do
+                if ! [[ "$target_name" =~ ^[A-Za-z0-9._-]+$ ]]; then
+                    missing+=("targets.${target_name} (nome inválido: use apenas letras, números, '.', '_' ou '-')")
+                    continue
+                fi
                 for field in "${required_target_fields[@]}"; do
                     if is_config_value_empty "$(yq_get_target_field "$target_name" "$field")"; then
                         missing+=("targets.${target_name}.${field}")
+                    fi
+                done
+                target_profile=$(yq_get_target_field "$target_name" PROFILE)
+                if ! is_config_value_empty "$target_profile" && [[ " ${profiles[*]} " != *" ${target_profile} "* ]]; then
+                    missing+=("targets.${target_name}.PROFILE (perfil '${target_profile}' não existe em profiles)")
+                fi
+                read -ra links <<< "$(yq_get_target_field "$target_name" DNS_HOSTS)"
+                for link in "${links[@]}"; do
+                    if ! [[ "$link" =~ $dns_pattern ]] || ! [[ "$(link_to_host "$link")" =~ ^[A-Za-z0-9.*-]+$ ]]; then
+                        missing+=("targets.${target_name}.DNS_HOSTS (domínio inválido: ${link})")
+                    fi
+                done
+                read -ra links <<< "$(yq_get_target_field "$target_name" OPEN_URLS)"
+                for link in "${links[@]}"; do
+                    if ! [[ "$link" =~ $link_pattern ]] || ! [[ "$(link_to_host "$link")" =~ ^[A-Za-z0-9.-]+$ ]]; then
+                        missing+=("targets.${target_name}.OPEN_URLS (URL inválida: ${link})")
                     fi
                 done
             done
@@ -505,6 +586,65 @@ sso_login() {
     aws sso login --profile "$profile_name"
 }
 
+# Opens a separate Chrome instance (one profile per target) that resolves
+# DNS_HOSTS to the local tunnel, without touching the Windows hosts file
+launch_chrome_with_host_rules() {
+    local target_name="$1"
+    local host_rules
+    local links
+    local link
+    local url_args=""
+    local ps_script
+    local encoded_script
+
+    host_rules=$(build_chrome_host_rules "$SSM_LOCAL_PORT")
+    read -ra links <<< "$OPEN_URLS"
+    for link in "${links[@]}"; do
+        url_args+=", '$(link_to_url "$link")'"
+    done
+
+    printf -v ps_script "%s" \
+        "\$dir = Join-Path \$env:LOCALAPPDATA '${CHROME_PROFILE_DIR}\\chrome-${target_name}'; " \
+        "\$chromeArgs = @(('--user-data-dir=\"{0}\"' -f \$dir), '--host-rules=\"${host_rules}\"', '--no-first-run'${url_args}); " \
+        "Start-Process chrome.exe -ErrorAction Stop -ArgumentList \$chromeArgs"
+    encoded_script=$(printf '%s' "$ps_script" | iconv -f UTF-8 -t UTF-16LE | base64 -w0)
+
+    if "$POWERSHELL_EXE" -NoProfile -EncodedCommand "$encoded_script" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    echo ""
+    echo -e "${YELLOW}${MSG_BROWSER_OPEN_FAILED}${NC}"
+    echo "$ps_script"
+    return 1
+}
+
+# Waits for the local tunnel port, then opens Chrome (runs in background)
+open_browser_when_tunnel_ready() {
+    local target_name="$1"
+    local attempts=$((BROWSER_WAIT_SECONDS * 2))
+
+    while [ $attempts -gt 0 ]; do
+        if (exec 3<>"/dev/tcp/127.0.0.1/${SSM_LOCAL_PORT}") 2>/dev/null; then
+            if launch_chrome_with_host_rules "$target_name"; then
+                echo -e "${GREEN}${MSG_BROWSER_OPENED}${NC}"
+            fi
+            return
+        fi
+        sleep 0.5
+        attempts=$((attempts - 1))
+    done
+
+    echo -e "${YELLOW}${MSG_BROWSER_TIMEOUT}${NC}"
+}
+
+stop_browser_waiter() {
+    if [ -n "$BROWSER_WAIT_PID" ]; then
+        kill "$BROWSER_WAIT_PID" 2>/dev/null
+        BROWSER_WAIT_PID=""
+    fi
+}
+
 verify_sts_caller_identity() {
     local profile_name="$1"
     local sts_output
@@ -634,6 +774,7 @@ view_targets() {
             load_target_ssm_settings "$target_name"
             echo -e "${CYAN}--- Target $((idx + 1)) ---${NC}"
             printf "${TARGET_VIEW_NAME}\n" "$target_name"
+            printf "${TARGET_VIEW_PROFILE}\n" "$TARGET_PROFILE"
             printf "${TARGET_VIEW_INSTANCE}\n" "$SSM_TARGET"
             if is_config_value_empty "$SSM_REGION"; then
                 printf "${TARGET_VIEW_REGION}\n" "$TARGET_VIEW_REGION_DEFAULT"
@@ -643,6 +784,8 @@ view_targets() {
             printf "${TARGET_VIEW_DOCUMENT}\n" "$SSM_DOCUMENT"
             printf "${TARGET_VIEW_REMOTE}\n" "$SSM_REMOTE_HOST"
             printf "${TARGET_VIEW_PORTS}\n" "$SSM_REMOTE_PORT" "$SSM_LOCAL_PORT"
+            printf "${TARGET_VIEW_DNS}\n" "${DNS_HOSTS:-$TARGET_VIEW_EMPTY}"
+            printf "${TARGET_VIEW_URLS}\n" "${OPEN_URLS:-$TARGET_VIEW_EMPTY}"
             echo ""
         done
     fi
@@ -651,13 +794,66 @@ view_targets() {
     read -p "$PROMPT_BACK_TO_MENU"
 }
 
+# Target menu as a table, with each target's profile
+print_targets_table() {
+    local width=${#TARGET_TABLE_HEADER_TARGET}
+    local target_name
+    local i
+
+    for target_name in "${targets[@]}"; do
+        if [ ${#target_name} -gt "$width" ]; then
+            width=${#target_name}
+        fi
+    done
+
+    printf "${CYAN}     %-*s | %s${NC}\n" "$width" "$TARGET_TABLE_HEADER_TARGET" "$TARGET_TABLE_HEADER_PROFILE"
+    for i in "${!targets[@]}"; do
+        printf "%3d) %-*s | ${MAGENTA}(%s)${NC}\n" "$((i + 1))" "$width" "${targets[$i]}" \
+            "$(yq_get_target_field "${targets[$i]}" PROFILE)"
+    done
+    echo "  $MENU_OPTION_BACK"
+}
+
+# Sets selected_target from config.yaml; returns 1 when the user goes back
+select_config_target() {
+    local target_option
+
+    while true; do
+        clear
+        echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
+        echo -e "${CYAN}        ${TARGET_MENU_TITLE}        ${NC}"
+        echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
+        print_targets_table
+        echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
+        read -p "$PROMPT_OPTION" target_option
+        target_option="${target_option//$'\r'/}"
+
+        if [ "$target_option" = "0" ]; then
+            return 1
+        fi
+
+        if ! [[ "$target_option" =~ ^[0-9]+$ ]] || [ "$target_option" -lt 1 ] || [ "$target_option" -gt ${#targets[@]} ]; then
+            echo -e "${RED}${MSG_INVALID_OPTION}${NC}"
+            read -p "$PROMPT_BACK_TO_MENU"
+            continue
+        fi
+
+        selected_target="${targets[$((target_option - 1))]}"
+        return 0
+    done
+}
+
 connect_ssm() {
     list_config_targets
 
     while true; do
-        if ! select_config_profile; then
+        if ! select_config_target; then
             return
         fi
+
+        load_target_ssm_settings "$selected_target"
+        selected_profile="$TARGET_PROFILE"
+        resolve_ssm_region "$selected_profile"
 
         echo -e "${CYAN}${MSG_SSO_VERIFYING}${NC}"
         if ! ensure_sso_session "$selected_profile"; then
@@ -665,59 +861,45 @@ connect_ssm() {
             continue
         fi
 
-        while true; do
-            clear
-            echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
-            echo -e "${CYAN}        ${TARGET_MENU_TITLE}        ${NC}"
-            echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
-            for i in "${!targets[@]}"; do
-                echo "$((i + 1))) ${targets[$i]}"
-            done
-            echo "$MENU_OPTION_BACK"
-            echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
-            read -p "$PROMPT_OPTION" target_option
-            target_option="${target_option//$'\r'/}"
+        clear
+        echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
+        echo -e "${CYAN}        ${SSM_CONNECT_TITLE}        ${NC}"
+        echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
+        printf "${CYAN}${SSM_CONNECT_PROFILE}${NC}\n" "$selected_profile"
+        printf "${CYAN}${SSM_CONNECT_TARGET}${NC}\n" "$selected_target"
+        printf "${CYAN}${SSM_CONNECT_REGION}${NC}\n" "$SSM_REGION"
+        printf "${CYAN}${SSM_CONNECT_PORT}${NC}\n" "$SSM_LOCAL_PORT"
+        if needs_sudo_for_local_port "$SSM_LOCAL_PORT"; then
+            printf "${CYAN}${SSM_CONNECT_SUDO}${NC}\n" "$SSM_LOCAL_PORT"
+        fi
+        echo -e "${CYAN}${SSM_CONNECT_STOP}${NC}"
+        print_link_list "$SSM_CONNECT_DNS_TITLE" "$DNS_HOSTS"
+        print_link_list "$SSM_CONNECT_URLS_TITLE" "$OPEN_URLS" url
+        echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
 
-            if [ "$target_option" = "0" ]; then
-                break
+        if is_wsl && { ! is_config_value_empty "$DNS_HOSTS" || ! is_config_value_empty "$OPEN_URLS"; }; then
+            read -p "$PROMPT_OPEN_BROWSER" open_browser
+            open_browser="${open_browser//$'\r'/}"
+            if [[ -z "$open_browser" || "$open_browser" =~ ^[sS]$ ]]; then
+                echo -e "${CYAN}${MSG_BROWSER_WAITING}${NC}"
+                open_browser_when_tunnel_ready "$selected_target" &
+                BROWSER_WAIT_PID=$!
             fi
+        fi
 
-            if ! [[ "$target_option" =~ ^[0-9]+$ ]] || [ "$target_option" -lt 1 ] || [ "$target_option" -gt ${#targets[@]} ]; then
-                echo -e "${RED}${MSG_INVALID_OPTION}${NC}"
-                read -p "$PROMPT_BACK_TO_MENU"
-                continue
-            fi
-
-            selected_target="${targets[$((target_option - 1))]}"
-            load_target_ssm_settings "$selected_target"
-            resolve_ssm_region "$selected_profile"
-
-            clear
-            echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
-            echo -e "${CYAN}        ${SSM_CONNECT_TITLE}        ${NC}"
-            echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
-            printf "${CYAN}${SSM_CONNECT_PROFILE}${NC}\n" "$selected_profile"
-            printf "${CYAN}${SSM_CONNECT_TARGET}${NC}\n" "$selected_target"
-            printf "${CYAN}${SSM_CONNECT_REGION}${NC}\n" "$SSM_REGION"
-            printf "${CYAN}${SSM_CONNECT_PORT}${NC}\n" "$SSM_LOCAL_PORT"
-            if needs_sudo_for_local_port "$SSM_LOCAL_PORT"; then
-                printf "${CYAN}${SSM_CONNECT_SUDO}${NC}\n" "$SSM_LOCAL_PORT"
-            fi
-            echo -e "${CYAN}${SSM_CONNECT_STOP}${NC}"
-            print_available_links "$AVAILABLE_LINKS"
-            echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
-
-            if ! run_aws_process "$EXTERNAL_TITLE_SSM" "$MSG_SSM_PROCESS_HINT" \
-                run_ssm_tunnel "$selected_profile"; then
-                echo -e "${RED}${MSG_SSM_FAILED}${NC}"
-                read -p "$PROMPT_BACK_TO_MENU"
-            fi
-            return
-        done
+        if ! run_aws_process "$EXTERNAL_TITLE_SSM" "$MSG_SSM_PROCESS_HINT" \
+            run_ssm_tunnel "$selected_profile"; then
+            echo -e "${RED}${MSG_SSM_FAILED}${NC}"
+            read -p "$PROMPT_BACK_TO_MENU"
+        fi
+        stop_browser_waiter
+        return
     done
 }
 
 # 3. Main menu
+trap stop_browser_waiter EXIT
+
 while true; do
     clear
     echo -e "${CYAN}${MENU_SEPARATOR}${NC}"
