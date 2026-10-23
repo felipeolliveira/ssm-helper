@@ -133,8 +133,16 @@ h3 { font-size: 13px; }
     box-shadow: var(--shadow-glow);
 }
 
-.brand-name { font-family: var(--font-display); font-weight: 700; }
-.brand-sub { font-size: 12px; color: var(--text-muted); }
+.brand-title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
 
 nav { display: flex; flex-direction: column; gap: 2px; }
 
@@ -823,3 +831,10 @@ input:focus, select:focus {
 
 .radio { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); cursor: pointer; }
 .radio input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); }
+
+/* Privacy mode: sensitive values are masked on screen */
+.brand-text { flex: 1; min-width: 0; }
+.privacy-toggle { flex-shrink: 0; color: var(--text-muted); }
+.privacy-toggle.on { color: var(--primary); background: var(--primary-soft); }
+.secret-input, .secret-input:focus { color: var(--text-muted); background: var(--bg-elevated); box-shadow: none; cursor: not-allowed; }
+.secret-text { filter: blur(5px); user-select: none; }

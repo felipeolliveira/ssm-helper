@@ -16,6 +16,8 @@ export function GetAppearance():Promise<main.AppearanceState>;
 
 export function GetEnv():Promise<main.EnvState>;
 
+export function GetPreferences():Promise<main.Preferences>;
+
 export function ListEnvs():Promise<main.EnvList>;
 
 export function Login(arg1:string):Promise<void>;
@@ -31,6 +33,10 @@ export function SaveAppearance(arg1:settings.Appearance):Promise<Array<string>>;
 export function SaveEnv(arg1:env.Env):Promise<main.SaveResult>;
 
 export function SelectEnv(arg1:string):Promise<main.EnvState>;
+
+export function SetHideSensitive(arg1:boolean):Promise<void>;
+
+export function SetOpenChromeOnConnect(arg1:boolean):Promise<void>;
 
 export function StartupMessages():Promise<Array<main.LogEntry>>;
 

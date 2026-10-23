@@ -77,6 +77,12 @@ export type NewEnvRequest = {
     renameCurrentTo: string
 }
 
+// Screen options stored in ssm-helper.json
+export type Preferences = {
+    hideSensitive: boolean
+    openChromeOnConnect: boolean
+}
+
 export type AppearanceState = {
     appearance: Appearance
     builtins: Palette[]
@@ -164,6 +170,12 @@ export const api = {
         }
     },
     saveAppearance: async (a: Appearance) => ((await App.SaveAppearance(settings.Appearance.createFrom(a))) ?? []) as string[],
+    getPreferences: async (): Promise<Preferences> => {
+        const p = await App.GetPreferences()
+        return {hideSensitive: !!p.hideSensitive, openChromeOnConnect: !!p.openChromeOnConnect}
+    },
+    setHideSensitive: (hide: boolean) => App.SetHideSensitive(hide),
+    setOpenChromeOnConnect: (open: boolean) => App.SetOpenChromeOnConnect(open),
     startupMessages: async () => ((await App.StartupMessages()) ?? []) as LogEntry[],
     profileStatuses: async () => ((await App.ProfileStatuses()) ?? []) as ProfileStatus[],
     login: (profile: string) => App.Login(profile),

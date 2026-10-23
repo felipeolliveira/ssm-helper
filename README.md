@@ -20,7 +20,7 @@ Não é preciso permissão de administrador, nem para portas locais abaixo de 10
 2. Abra o `ssm-helper.exe`.
 3. Na primeira vez, a tela **Ambiente** abre sozinha. Cadastre os perfis e os targets e clique em **Salvar**. Se já tiver arquivos de ambiente (`env.json` ou `env.<nome>.json`), coloque-os na mesma pasta do `.exe` antes de abrir.
 
-O app guarda na pasta do `.exe` os arquivos de ambiente e o `ssm-helper.json` (preferências), então ela precisa permitir escrita. Para levar o app para outra máquina, copie a pasta inteira. Só o login SSO e os perfis do Chrome ficam fora dela (veja [Dados fora da pasta do app](#dados-fora-da-pasta-do-app)).
+Tudo o que o app usa e grava fica na pasta do `.exe` (veja [O que fica na pasta do app](#o-que-fica-na-pasta-do-app)), então ela precisa permitir escrita. Para levar o app para outra máquina ou outro usuário, copie a pasta inteira: os ambientes, as preferências, o login SSO e os perfis do Chrome vão junto.
 
 > Os arquivos de ambiente têm dados das suas contas AWS. Eles estão no `.gitignore` e **não devem ser versionados**.
 
@@ -34,6 +34,17 @@ A barra lateral tem quatro telas, o seletor de ambiente e o log.
 - **Aparência**: escolhe e edita as paletas de cores (veja [Aparência](#aparência)).
 - **Ambiente ativo**, acima do Log: troca de ambiente ou cria um novo.
 - **Log**: mensagens do login, dos túneis e das conversões de arquivos. As que vêm da AWS ficam em inglês.
+
+### Ocultar dados sensíveis
+
+O botão de olho, ao lado do título na barra lateral, liga o modo de privacidade, útil para compartilhar a tela ou gravar um vídeo:
+
+- hosts remotos, domínios, URLs e o caminho da pasta aparecem como `••••••••`, sempre com o mesmo tamanho, para não revelar o formato nem o comprimento do valor;
+- números de conta aparecem como em banco, só com os 4 últimos dígitos (`••••••••6278`);
+- no editor de ambiente, os campos de conta, URL do SSO, instância, host, domínios e URLs também mostram `••••••••` e ficam só leitura; para editá-los, mostre os dados de novo;
+- o Log, as mensagens de erro e a lista de problemas da configuração ficam borrados, porque podem citar IDs e hosts.
+
+A escolha fica salva no `ssm-helper.json`. Clique de novo no olho para mostrar tudo.
 
 ### Vários túneis ao mesmo tempo
 
@@ -150,6 +161,8 @@ Guarda as preferências do app, que não pertencem a um ambiente. O app cria e a
 ```json
 {
   "activeEnv": "qa",
+  "hideSensitive": false,
+  "openChromeOnConnect": true,
   "appearance": {
     "palette": "teal",
     "palettes": {
@@ -165,6 +178,8 @@ Guarda as preferências do app, que não pertencem a um ambiente. O app cria e a
 | Campo | Descrição |
 |---|---|
 | `activeEnv` | Ambiente selecionado: o `<nome>` de `env.<nome>.json`, ou vazio para `env.json` |
+| `hideSensitive` | `true` quando o modo de privacidade (olho) está ligado. Padrão: `false` |
+| `openChromeOnConnect` | Chave **Abrir o Chrome ao conectar**, da tela Targets. Padrão: `true` |
 | `appearance.palette` | Paleta ativa: `ssm-dark`, `ssm-light` ou o nome de uma paleta em `palettes` |
 | `appearance.palettes.<nome>.<cor>` | Cor em `#rgb`, `#rrggbb` ou `#rrggbbaa`. Os nomes `ssm-dark` e `ssm-light` são reservados |
 
@@ -177,7 +192,7 @@ As aplicações precisam ser abertas pelo domínio real, e não por `localhost`,
 Em targets com `dnsHosts` ou `openUrls`, o app abre uma **instância separada do Chrome** assim que o túnel fica pronto, com uma aba para cada URL de `openUrls`. Isso pode ser desligado na chave **Abrir o Chrome ao conectar**, na tela Targets; o botão **Abrir Chrome** de cada card abre a janela a qualquer momento enquanto o túnel estiver ativo. Essa instância:
 
 - usa o flag `--host-rules` para mapear cada domínio de `dnsHosts` para `127.0.0.1:<localPort>`, só dentro dela. Inclua ali também os domínios que a aplicação chama por baixo, como o da API;
-- tem perfil próprio (`%LOCALAPPDATA%\ssm-helper\chrome-<perfil>`), então não fecha nem altera o seu Chrome normal. Na primeira vez, faça login nas aplicações dentro dessa janela.
+- tem perfil próprio (`ssm-helper-data\chrome-<perfil>`, na pasta do app), então não fecha nem altera o seu Chrome normal. Na primeira vez, faça login nas aplicações dentro dessa janela.
 
 Não é preciso permissão de administrador nem mexer no arquivo `hosts` do Windows. Se puder editá-lo, apontar os domínios para `127.0.0.1` em `C:\Windows\System32\drivers\etc\hosts` continua sendo uma alternativa, mas aí o acesso precisa usar a porta local na URL quando ela não for `443`.
 
@@ -202,12 +217,22 @@ Ao abrir, essa janela do Chrome mostra uma barra com o aviso *"Você está usand
 
 Os perfis vêm **apenas** do ambiente ativo. O app não lê nem altera `~/.aws/config`, `~/.aws/credentials` ou variáveis `AWS_*` do Windows. As credenciais temporárias da role ficam só na memória do app.
 
-### Dados fora da pasta do app
+### O que fica na pasta do app
 
-Ficam em `%LOCALAPPDATA%\ssm-helper`, por usuário do Windows:
+```
+ssm-helper\
+  ssm-helper.exe
+  env.json, env.<nome>.json   ambientes
+  ssm-helper.json             preferências: ambiente ativo, olho, Chrome ao conectar, aparência
+  ssm-helper-data\
+    sso-cache\                token do login SSO, um arquivo por ssoUrl
+    chrome-<perfil>\          perfis do Chrome dos targets, com logins e cookies das aplicações
+    webview\                  dados internos da janela do app (WebView2)
+```
 
-- `sso-cache\`: o token do login SSO, um arquivo por `ssoUrl`. Apague a pasta para forçar um novo login;
-- `chrome-<perfil>\`: os perfis do Chrome usados pelos targets, com os logins e cookies das aplicações.
+Os dados do app ficam só nessa pasta, nada em `%APPDATA%` ou `%LOCALAPPDATA%`. O Chrome instalado e o próprio Windows mantêm os registros deles, como em qualquer programa.
+
+Como o `ssm-helper-data` tem o token do SSO e os cookies das aplicações, trate a pasta do app como dado pessoal: não a compartilhe nem a coloque numa pasta de rede aberta. Para começar do zero, apague o `ssm-helper-data` (o app pede um novo login SSO e os perfis do Chrome começam vazios); para só forçar um novo login, apague o `ssm-helper-data\sso-cache`.
 
 ## Atualizar de versões anteriores
 
@@ -219,8 +244,11 @@ Na primeira abertura, o app converte os arquivos das versões anteriores que enc
 | `config.yaml` e `config.<nome>.yaml` (versão em script, via WSL) | `env.json` e `env.<nome>.json` |
 | `ssm-helper.settings.json` | `ssm-helper.json` |
 | Seção `appearance` dentro do `config.yaml` | `appearance` no `ssm-helper.json` |
+| `%LOCALAPPDATA%\ssm-helper` (login SSO e perfis do Chrome) | `ssm-helper-data\`, na pasta do app |
 
-A conversão só acontece enquanto não existe nenhum `env*.json` na pasta. Se houver arquivos `config.*.json` e `config.*.yaml`, os JSON são usados, por serem mais recentes. Os arquivos antigos não são apagados, e o Log mostra o que foi convertido. Depois de conferir os ambientes, você pode apagá-los.
+A pasta `%LOCALAPPDATA%\ssm-helper` é movida para `ssm-helper-data\` se este ainda não existir; se o app estiver em outro disco, só o login SSO é copiado e os perfis do Chrome começam vazios. As preferências antigas do olho e do Chrome ao conectar, que ficavam dentro da janela do app, não são trazidas: ajuste de novo na tela, se precisar. A pasta `%APPDATA%\ssm-helper.exe`, das versões anteriores, pode ser apagada.
+
+A conversão dos ambientes só acontece enquanto não existe nenhum `env*.json` na pasta. Se houver arquivos `config.*.json` e `config.*.yaml`, os JSON são usados, por serem mais recentes. Os arquivos antigos não são apagados, e o Log mostra o que foi convertido. Depois de conferir os ambientes, você pode apagá-los.
 
 ## Solução de problemas
 
@@ -261,7 +289,7 @@ make test   # go vet, go test e checagem de tipos do frontend
 make build  # gera build/bin/ssm-helper.exe (compila também a partir do Linux/WSL)
 ```
 
-Para rodar o `.exe` usando outra pasta para os ambientes e o `ssm-helper.json`, defina a variável `SSM_HELPER_DIR`. No WSL, por exemplo:
+Para rodar o `.exe` usando outra pasta para os ambientes, o `ssm-helper.json` e o `ssm-helper-data`, defina a variável `SSM_HELPER_DIR`. No WSL, por exemplo:
 
 ```sh
 SSM_HELPER_DIR="$PWD" WSLENV="SSM_HELPER_DIR/p" ./build/bin/ssm-helper.exe

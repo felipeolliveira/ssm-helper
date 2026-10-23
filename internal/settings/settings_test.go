@@ -17,7 +17,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	teal := builtinPalette(PaletteSSMDark)
 	teal.Name, teal.BuiltIn = "teal", false
 	teal.Colors["primary"] = "#2dd4bf"
-	s = Settings{ActiveEnv: "qa", Appearance: Appearance{Palette: "teal", Palettes: []Palette{teal}}}
+	s = Settings{ActiveEnv: "qa", HideSensitive: true, OpenChromeOnConnect: false, Appearance: Appearance{Palette: "teal", Palettes: []Palette{teal}}}
 	if err := Save(dir, s); err != nil {
 		t.Fatal(err)
 	}
@@ -44,6 +44,9 @@ func TestLoadLegacyFile(t *testing.T) {
 		t.Fatalf("problems=%v source=%v err=%v", problems, source, err)
 	}
 	teal := s.Appearance.ActivePalette()
+	if s.HideSensitive || !s.OpenChromeOnConnect {
+		t.Errorf("legacy file should use the default preferences: %+v", s)
+	}
 	if s.ActiveEnv != "qa" || teal.Name != "teal" || teal.Colors["bgDeep"] != "#07100f" || teal.Colors["primary600"] != "#14b8a6" {
 		t.Errorf("legacy settings = %+v", s)
 	}

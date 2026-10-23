@@ -1,6 +1,7 @@
 import {useState} from 'react'
 import {api, Env, errorMessage, ProfileStatus, Target, TunnelState, TunnelStatus, tunnelKey} from '../api'
 import {Icon} from '../components/Icon'
+import {Secret, useSecretText} from '../privacy'
 
 const statusLabels: Record<TunnelStatus, string> = {
     idle: 'Desconectado',
@@ -67,6 +68,8 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome}: {
     const busy = status === 'connecting' || status === 'login'
     const connected = status === 'connected'
     const usesBrowser = target.dnsHosts.length > 0 || target.openUrls.length > 0
+    const secretText = useSecretText()
+    const hidden = secretText !== ''
 
     const run = async (action: () => Promise<void>) => {
         setError('')
@@ -95,21 +98,21 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome}: {
             <dl className="facts">
                 <div><dt>Porta</dt><dd><code>{target.remotePort} → localhost:{target.localPort}</code></dd></div>
                 <div><dt>Região</dt><dd>{region}</dd></div>
-                <div className="wide"><dt>Host remoto</dt><dd className="truncate" title={target.remoteHost}>{target.remoteHost}</dd></div>
+                <div className="wide"><dt>Host remoto</dt><dd className="truncate" title={hidden ? undefined : target.remoteHost}><Secret value={target.remoteHost}/></dd></div>
                 {target.dnsHosts.length > 0 && (
                     <div className="wide"><dt>Domínios</dt><dd className="chips">
-                        {target.dnsHosts.map(h => <span key={h} className="chip">{h}</span>)}
+                        {target.dnsHosts.map(h => <span key={h} className="chip"><Secret value={h}/></span>)}
                     </dd></div>
                 )}
                 {target.openUrls.length > 0 && (
                     <div className="wide"><dt>URLs</dt><dd className="chips">
-                        {target.openUrls.map(u => <span key={u} className="chip">{linkToURL(u)}</span>)}
+                        {target.openUrls.map(u => <span key={u} className="chip"><Secret value={linkToURL(u)}/></span>)}
                     </dd></div>
                 )}
             </dl>
 
             {(state?.message || error) && (
-                <p className={`card-message ${status === 'error' || error ? 'error' : ''}`}>{error || state?.message}</p>
+                <p className={`card-message ${status === 'error' || error ? `error ${secretText}` : ''}`}>{error || state?.message}</p>
             )}
 
             <footer className="card-actions">

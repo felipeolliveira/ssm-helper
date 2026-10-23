@@ -1,6 +1,7 @@
 import {useEffect, useRef} from 'react'
 import {LogEntry} from '../api'
 import {Icon} from './Icon'
+import {useSecretText} from '../privacy'
 
 export default function LogPanel({open, logs, onClose, onClear}: {
     open: boolean
@@ -9,6 +10,8 @@ export default function LogPanel({open, logs, onClose, onClear}: {
     onClear: () => void
 }) {
     const endRef = useRef<HTMLDivElement>(null)
+    // Log lines carry session IDs, hosts and the Chrome command line
+    const secretText = useSecretText()
 
     useEffect(() => {
         if (open) endRef.current?.scrollIntoView({block: 'end'})
@@ -30,7 +33,7 @@ export default function LogPanel({open, logs, onClose, onClear}: {
                     <div key={i} className="log-line">
                         <span className="log-time">{entry.time}</span>
                         <span className="log-source">{entry.source}</span>
-                        <span className="log-text">{entry.text}</span>
+                        <span className={`log-text ${secretText}`}>{entry.text}</span>
                     </div>
                 ))}
                 <div ref={endRef}/>

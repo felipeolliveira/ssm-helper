@@ -114,7 +114,7 @@ type SSOCode struct {
 type App struct {
 	ctx     context.Context
 	dir     string // folder with the environments and ssm-helper.json
-	dataDir string // %LOCALAPPDATA%\ssm-helper: SSO cache and Chrome profiles
+	dataDir string // ssm-helper-data next to the executable: SSO cache, Chrome profiles, WebView2 data
 	sso     *sso.Manager
 
 	mu       sync.Mutex
@@ -137,6 +137,7 @@ func NewApp(dir, dataDir string) *App {
 	a.sso = sso.NewManager(filepath.Join(dataDir, "sso-cache"), func(url string) {
 		wruntime.BrowserOpenURL(a.ctx, url)
 	})
+	a.moveLegacyDataDir()
 	a.loadSettings()
 	return a
 }
@@ -344,6 +345,34 @@ func (a *App) SaveEnv(e env.Env) (SaveResult, error) {
 	}
 	a.logf("env", file+" salvo.")
 	return SaveResult{State: a.GetEnv()}, nil
+}
+
+type Preferences struct {
+	HideSensitive       bool `json:"hideSensitive"`
+	OpenChromeOnConnect bool `json:"openChromeOnConnect"`
+}
+
+// GetPreferences returns the screen options stored in ssm-helper.json.
+func (a *App) GetPreferences() Preferences {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return Preferences{HideSensitive: a.settings.HideSensitive, OpenChromeOnConnect: a.settings.OpenChromeOnConnect}
+}
+
+// SetHideSensitive turns the privacy mode on or off.
+func (a *App) SetHideSensitive(hide bool) {
+	a.mu.Lock()
+	a.settings.HideSensitive = hide
+	a.mu.Unlock()
+	a.saveSettings()
+}
+
+// SetOpenChromeOnConnect chooses whether Chrome opens when a tunnel is ready.
+func (a *App) SetOpenChromeOnConnect(open bool) {
+	a.mu.Lock()
+	a.settings.OpenChromeOnConnect = open
+	a.mu.Unlock()
+	a.saveSettings()
 }
 
 // GetAppearance returns the appearance, which is the same for every environment.
@@ -689,9 +718,12 @@ func (a *App) startupBackground() *options.RGBA {
 	return &options.RGBA{R: r, G: g, B: b, A: 255}
 }
 
+// dataDirName holds what the app generates (SSO cache, Chrome profiles,
+// WebView2 data) next to the executable, so the whole app travels with its folder.
+const dataDirName = "ssm-helper-data"
+
 // defaultPaths returns the folder of the executable (or SSM_HELPER_DIR), which
-// holds the environments and ssm-helper.json, and the data folder in
-// %LOCALAPPDATA%\ssm-helper.
+// holds the environments and ssm-helper.json, and its data folder.
 func defaultPaths() (dir, dataDir string, err error) {
 	dir = os.Getenv("SSM_HELPER_DIR")
 	if dir == "" {
@@ -701,9 +733,57 @@ func defaultPaths() (dir, dataDir string, err error) {
 		}
 		dir = filepath.Dir(exe)
 	}
+	return dir, filepath.Join(dir, dataDirName), nil
+}
+
+// moveLegacyDataDir moves %LOCALAPPDATA%\ssm-helper, used by earlier versions,
+// into the data folder, so the SSO login and the Chrome profiles are kept.
+func (a *App) moveLegacyDataDir() {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
-		return "", "", err
+		return
 	}
-	return dir, filepath.Join(cacheDir, "ssm-helper"), nil
+	legacy := filepath.Join(cacheDir, "ssm-helper")
+	if _, err := os.Stat(a.dataDir); err == nil {
+		return
+	}
+	if info, err := os.Stat(legacy); err != nil || !info.IsDir() {
+		return
+	}
+	if err := os.Rename(legacy, a.dataDir); err == nil {
+		a.note("data", fmt.Sprintf("Login SSO e perfis do Chrome movidos de %s para %s.", legacy, a.dataDir))
+		return
+	}
+	// Another drive: copy the SSO login, which is small; Chrome profiles start fresh
+	if err := copyDir(filepath.Join(legacy, "sso-cache"), filepath.Join(a.dataDir, "sso-cache")); err != nil {
+		a.note("data", fmt.Sprintf("Não foi possível trazer os dados de %s: %v. Faça login de novo se for pedido.", legacy, err))
+		return
+	}
+	a.note("data", fmt.Sprintf("Login SSO copiado de %s. Os perfis do Chrome começam vazios; a pasta antiga pode ser apagada.", legacy))
+}
+
+func copyDir(from, to string) error {
+	entries, err := os.ReadDir(from)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(to, 0o700); err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(from, e.Name()))
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(to, e.Name()), data, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
 }

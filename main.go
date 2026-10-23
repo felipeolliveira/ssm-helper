@@ -3,10 +3,12 @@ package main
 import (
 	"embed"
 	"os"
+	"path/filepath"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/tunnel"
 )
@@ -40,6 +42,10 @@ func main() {
 		BackgroundColour: app.startupBackground(),
 		OnStartup:        app.startupHook,
 		OnShutdown:       app.shutdown,
+		Windows: &windows.Options{
+			// Keep the WebView2 data in the app folder instead of %APPDATA%
+			WebviewUserDataPath: filepath.Join(dataDir, "webview"),
+		},
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: "ssm-helper-3f6c1a2e",
 		},

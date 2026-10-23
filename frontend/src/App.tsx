@@ -23,19 +23,11 @@ import SSOBanner from './components/SSOBanner'
 import EnvSwitcher from './components/EnvSwitcher'
 import NewEnvDialog from './components/NewEnvDialog'
 import {Icon, IconName} from './components/Icon'
+import {usePrivacy} from './privacy'
 
 type View = 'targets' | 'profiles' | 'env' | 'appearance'
 
 const MAX_LOGS = 500
-const AUTO_CHROME_KEY = 'ssm-helper.autoChrome'
-
-function readAutoChrome(): boolean {
-    try {
-        return localStorage.getItem(AUTO_CHROME_KEY) !== 'false'
-    } catch {
-        return true
-    }
-}
 
 export default function App() {
     const [envState, setEnvState] = useState<EnvState | null>(null)
@@ -47,12 +39,13 @@ export default function App() {
     const [logs, setLogs] = useState<LogEntry[]>([])
     const [ssoCodes, setSSOCodes] = useState<Record<string, SSOCode>>({})
     const [logOpen, setLogOpen] = useState(false)
-    const [autoChrome, setAutoChrome] = useState(readAutoChrome)
+    const [autoChrome, setAutoChrome] = useState(true)
     const [loadError, setLoadError] = useState('')
     const [appearanceState, setAppearanceState] = useState<AppearanceState | null>(null)
     // Unsaved palette edits from the appearance screen, shown live
     const [previewAppearance, setPreviewAppearance] = useState<Appearance | null>(null)
     const [newEnvOpen, setNewEnvOpen] = useState(false)
+    const privacy = usePrivacy()
 
     const currentEnv = envState?.env ?? null
     const envUsable = !!currentEnv && !!envState && !envState.error && envState.problems.length === 0
@@ -113,6 +106,7 @@ export default function App() {
     useEffect(() => {
         reloadEnv()
         api.getAppearance().then(setAppearanceState).catch(err => setLoadError(errorMessage(err)))
+        api.getPreferences().then(p => setAutoChrome(p.openChromeOnConnect)).catch(() => {})
         api.startupMessages().then(entries => {
             addLogs(entries)
             if (entries.length > 0) setLogOpen(true)
@@ -144,11 +138,7 @@ export default function App() {
 
     const toggleAutoChrome = (value: boolean) => {
         setAutoChrome(value)
-        try {
-            localStorage.setItem(AUTO_CHROME_KEY, String(value))
-        } catch {
-            // per-viewer convenience only
-        }
+        api.setOpenChromeOnConnect(value).catch(err => setLoadError(errorMessage(err)))
     }
 
     const activeName = envState?.name ?? ''
@@ -169,10 +159,15 @@ export default function App() {
             <aside className="sidebar">
                 <div className="brand">
                     <span className="brand-mark"><Icon name="tunnel"/></span>
-                    <div>
-                        <div className="brand-name">SSM Helper</div>
-                        <div className="brand-sub">{currentEnv?.title || 'Túneis AWS SSM'}</div>
+                    <div className="brand-text">
+                        {/* The window title already says SSM Helper, so the sidebar shows the environment title */}
+                        <div className="brand-title" title={currentEnv?.title}>{currentEnv?.title || 'SSM Helper'}</div>
                     </div>
+                    <button className={`btn ghost icon-only privacy-toggle ${privacy.hidden ? 'on' : ''}`}
+                            onClick={privacy.toggle} aria-pressed={privacy.hidden}
+                            title={privacy.hidden ? 'Mostrar dados sensíveis' : 'Ocultar dados sensíveis (contas, hosts, domínios)'}>
+                        <Icon name={privacy.hidden ? 'eyeOff' : 'eye'} size={18}/>
+                    </button>
                 </div>
                 <nav>
                     {nav.map(item => (

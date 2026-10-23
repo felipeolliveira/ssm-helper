@@ -26,6 +26,10 @@ export function GetEnv() {
   return window['go']['main']['App']['GetEnv']();
 }
 
+export function GetPreferences() {
+  return window['go']['main']['App']['GetPreferences']();
+}
+
 export function ListEnvs() {
   return window['go']['main']['App']['ListEnvs']();
 }
@@ -56,6 +60,14 @@ export function SaveEnv(arg1) {
 
 export function SelectEnv(arg1) {
   return window['go']['main']['App']['SelectEnv'](arg1);
+}
+
+export function SetHideSensitive(arg1) {
+  return window['go']['main']['App']['SetHideSensitive'](arg1);
+}
+
+export function SetOpenChromeOnConnect(arg1) {
+  return window['go']['main']['App']['SetOpenChromeOnConnect'](arg1);
 }
 
 export function StartupMessages() {

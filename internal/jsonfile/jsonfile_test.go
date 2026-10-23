@@ -68,3 +68,21 @@ func TestLists(t *testing.T) {
 		t.Errorf("List from null = %q", got)
 	}
 }
+
+func TestBools(t *testing.T) {
+	root := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
+		Key("on"), BoolValue(true),
+		Key("off"), BoolValue(false),
+	}}
+	data, err := Encode(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "{\n  \"on\": true,\n  \"off\": false\n}\n"; string(data) != want {
+		t.Errorf("Encode =\n%s", data)
+	}
+	parsed, _ := Parse(data)
+	if !Bool(parsed, "on", false) || Bool(parsed, "off", true) || !Bool(parsed, "missing", true) {
+		t.Error("Bool did not read the values back")
+	}
+}
