@@ -330,6 +330,6 @@ The frontend translates with the dictionaries in `frontend/src/i18n/locales/`:
 
 **New screen text:** add the key to `ui` in every JSON and use `t('screen.key')`. If a dictionary misses the key, type checking fails.
 
-**New language:** copy `pt-BR.json` under the language code (for example `es.json`), translate the texts and register it in `frontend/src/i18n/index.tsx` (`Lang`, `dictionaries` and `LANGUAGES`), in `settings.Languages` in Go, and add its flag to `frontend/src/components/flags.tsx` (without one, the language gets the `en-US` flag). Flags are SVG because Windows shows flag emojis only as letters.
+**New language:** copy `pt-BR.json` under the language code (for example `es.json`), translate the texts and register it in `frontend/src/i18n/index.tsx` (`Lang`, `dictionaries` and `LANGUAGES`), in `settings.Languages` in Go, and add its flag to `frontend/src/components/Flags.tsx` (without one, the language gets the `en-US` flag). Flags are SVG because Windows shows flag emojis only as letters.
 
 **README screenshots:** they live in `docs/screenshots/<language>/`, taken with privacy mode on and the data from `env.json.example`.
