@@ -232,7 +232,7 @@ ssm-helper\
 
 Os dados do app ficam só nessa pasta, nada em `%APPDATA%` ou `%LOCALAPPDATA%`. O Chrome instalado e o próprio Windows mantêm os registros deles, como em qualquer programa.
 
-Como o `ssm-helper-data` tem o token do SSO e os cookies das aplicações, trate a pasta do app como dado pessoal: não a compartilhe nem a coloque numa pasta de rede aberta. Para começar do zero, apague o `ssm-helper-data` (o app pede um novo login SSO e os perfis do Chrome começam vazios); para só forçar um novo login, apague o `ssm-helper-data\sso-cache`.
+O `ssm-helper-data` tem o token do SSO e os cookies das aplicações. Por isso, ao abrir, o app restringe essa pasta ao seu usuário do Windows (e ao SYSTEM), sem herdar as permissões da pasta onde o app está: outras contas da máquina não conseguem lê-la, mesmo que a pasta do app seja compartilhada. Se não for possível aplicar essa restrição (por exemplo, num pendrive FAT32 ou numa pasta de rede), o Log avisa. Mesmo assim, trate a pasta do app como dado pessoal: não a envie a ninguém, já que copiar a pasta leva junto o login. Para começar do zero, apague o `ssm-helper-data` (o app pede um novo login SSO e os perfis do Chrome começam vazios); para só forçar um novo login, apague o `ssm-helper-data\sso-cache`.
 
 ## Atualizar de versões anteriores
 
@@ -244,9 +244,9 @@ Na primeira abertura, o app converte os arquivos das versões anteriores que enc
 | `config.yaml` e `config.<nome>.yaml` (versão em script, via WSL) | `env.json` e `env.<nome>.json` |
 | `ssm-helper.settings.json` | `ssm-helper.json` |
 | Seção `appearance` dentro do `config.yaml` | `appearance` no `ssm-helper.json` |
-| `%LOCALAPPDATA%\ssm-helper` (login SSO e perfis do Chrome) | `ssm-helper-data\`, na pasta do app |
+| `%LOCALAPPDATA%\ssm-helper` (login SSO e perfis do Chrome) | `ssm-helper-data\`, na pasta do app, começando vazio |
 
-A pasta `%LOCALAPPDATA%\ssm-helper` é movida para `ssm-helper-data\` se este ainda não existir; se o app estiver em outro disco, só o login SSO é copiado e os perfis do Chrome começam vazios. As preferências antigas do olho e do Chrome ao conectar, que ficavam dentro da janela do app, não são trazidas: ajuste de novo na tela, se precisar. A pasta `%APPDATA%\ssm-helper.exe`, das versões anteriores, pode ser apagada.
+A pasta `%LOCALAPPDATA%\ssm-helper` não é trazida: se fosse, qualquer cópia nova do app levaria o login e os perfis do Chrome das outras. Na primeira abertura, faça login SSO de novo e, nos targets acessados pelo Chrome, entre nas aplicações outra vez; o Log avisa que a pasta antiga pode ser apagada. As preferências antigas do olho e do Chrome ao conectar, que ficavam dentro da janela do app, não são trazidas: ajuste de novo na tela, se precisar. A pasta `%APPDATA%\ssm-helper.exe`, das versões anteriores, pode ser apagada.
 
 A conversão dos ambientes só acontece enquanto não existe nenhum `env*.json` na pasta. Se houver arquivos `config.*.json` e `config.*.yaml`, os JSON são usados, por serem mais recentes. Os arquivos antigos não são apagados, e o Log mostra o que foi convertido. Depois de conferir os ambientes, você pode apagá-los.
 

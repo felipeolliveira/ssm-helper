@@ -137,7 +137,8 @@ func NewApp(dir, dataDir string) *App {
 	a.sso = sso.NewManager(filepath.Join(dataDir, "sso-cache"), func(url string) {
 		wruntime.BrowserOpenURL(a.ctx, url)
 	})
-	a.moveLegacyDataDir()
+	a.noteLegacyDataDir()
+	a.secureDataDir()
 	a.loadSettings()
 	return a
 }
@@ -736,9 +737,21 @@ func defaultPaths() (dir, dataDir string, err error) {
 	return dir, filepath.Join(dir, dataDirName), nil
 }
 
-// moveLegacyDataDir moves %LOCALAPPDATA%\ssm-helper, used by earlier versions,
-// into the data folder, so the SSO login and the Chrome profiles are kept.
-func (a *App) moveLegacyDataDir() {
+// secureDataDir creates the data folder and limits it to the current user.
+func (a *App) secureDataDir() {
+	if err := os.MkdirAll(a.dataDir, 0o700); err != nil {
+		a.note("data", fmt.Sprintf("Não foi possível criar %s: %v", a.dataDir, err))
+		return
+	}
+	if err := protectDir(a.dataDir); err != nil {
+		a.note("data", fmt.Sprintf("Não foi possível restringir %s ao seu usuário (%v). Ela guarda o login SSO e os cookies do Chrome: mantenha o app numa pasta só sua.", a.dataDir, err))
+	}
+}
+
+// noteLegacyDataDir points out %LOCALAPPDATA%\ssm-helper, used by earlier
+// versions. It is not moved: any copy of the app would take the SSO login and
+// the Chrome profiles from the others.
+func (a *App) noteLegacyDataDir() {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		return
@@ -747,43 +760,7 @@ func (a *App) moveLegacyDataDir() {
 	if _, err := os.Stat(a.dataDir); err == nil {
 		return
 	}
-	if info, err := os.Stat(legacy); err != nil || !info.IsDir() {
-		return
+	if info, err := os.Stat(legacy); err == nil && info.IsDir() {
+		a.note("data", fmt.Sprintf("A pasta %s, de versões anteriores, não é mais usada: o login SSO e os perfis do Chrome agora ficam em %s. Faça login de novo quando for pedido e apague a pasta antiga.", legacy, a.dataDir))
 	}
-	if err := os.Rename(legacy, a.dataDir); err == nil {
-		a.note("data", fmt.Sprintf("Login SSO e perfis do Chrome movidos de %s para %s.", legacy, a.dataDir))
-		return
-	}
-	// Another drive: copy the SSO login, which is small; Chrome profiles start fresh
-	if err := copyDir(filepath.Join(legacy, "sso-cache"), filepath.Join(a.dataDir, "sso-cache")); err != nil {
-		a.note("data", fmt.Sprintf("Não foi possível trazer os dados de %s: %v. Faça login de novo se for pedido.", legacy, err))
-		return
-	}
-	a.note("data", fmt.Sprintf("Login SSO copiado de %s. Os perfis do Chrome começam vazios; a pasta antiga pode ser apagada.", legacy))
-}
-
-func copyDir(from, to string) error {
-	entries, err := os.ReadDir(from)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(to, 0o700); err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(from, e.Name()))
-		if err != nil {
-			return err
-		}
-		if err := os.WriteFile(filepath.Join(to, e.Name()), data, 0o600); err != nil {
-			return err
-		}
-	}
-	return nil
 }
