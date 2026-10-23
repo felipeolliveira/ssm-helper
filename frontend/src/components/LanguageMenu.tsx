@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react'
 import {LANGUAGES, useI18n} from '../i18n'
 import {Icon} from './Icon'
-import {flags} from './flags'
+import {flags} from './Flags'
 
 // Language picker: a button with the current flag and a dropdown with the others.
 export default function LanguageMenu() {

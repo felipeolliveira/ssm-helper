@@ -330,6 +330,6 @@ O frontend traduz pelos dicionários em `frontend/src/i18n/locales/`:
 
 **Novo texto de tela:** acrescente a chave em `ui` de todos os JSON e use `t('tela.chave')`. Se um dicionário ficar sem a chave, a checagem de tipos falha.
 
-**Novo idioma:** copie o `pt-BR.json` com o código do idioma (por exemplo `es.json`), traduza os textos e registre-o em `frontend/src/i18n/index.tsx` (`Lang`, `dictionaries` e `LANGUAGES`), em `settings.Languages`, no Go, e acrescente a bandeira em `frontend/src/components/flags.tsx` (sem ela, o idioma usa a bandeira `en-US`). As bandeiras são SVG porque o Windows mostra emojis de bandeira só como letras.
+**Novo idioma:** copie o `pt-BR.json` com o código do idioma (por exemplo `es.json`), traduza os textos e registre-o em `frontend/src/i18n/index.tsx` (`Lang`, `dictionaries` e `LANGUAGES`), em `settings.Languages`, no Go, e acrescente a bandeira em `frontend/src/components/Flags.tsx` (sem ela, o idioma usa a bandeira `en-US`). As bandeiras são SVG porque o Windows mostra emojis de bandeira só como letras.
 
 **Prints do README:** ficam em `docs/screenshots/<idioma>/`, tirados com o modo de privacidade ligado e os dados do `env.json.example`.
