@@ -1,15 +1,8 @@
 import {useState} from 'react'
-import {api, Env, errorMessage, ProfileStatus, Target, TunnelState, TunnelStatus, tunnelKey} from '../api'
+import {api, Env, Message, ProfileStatus, Target, toMessage, TunnelState, TunnelStatus, tunnelKey} from '../api'
 import {Icon} from '../components/Icon'
 import {Secret, useSecretText} from '../privacy'
-
-const statusLabels: Record<TunnelStatus, string> = {
-    idle: 'Desconectado',
-    connecting: 'Conectando',
-    login: 'Aguardando login',
-    connected: 'Conectado',
-    error: 'Erro',
-}
+import {useI18n} from '../i18n'
 
 function linkToURL(link: string) {
     return /^https?:\/\//.test(link) ? link : `https://${link}`
@@ -24,18 +17,19 @@ export default function TargetsView({envName, env, tunnels, profiles, autoChrome
     autoChrome: boolean
     onAutoChromeChange: (value: boolean) => void
 }) {
+    const {t} = useI18n()
     return (
         <div className="page">
             <header className="page-header">
                 <div>
-                    <h1>Targets</h1>
-                    <p className="muted">Conecte a um ambiente para abrir o túnel SSM na porta local.</p>
+                    <h1>{t('targets.title')}</h1>
+                    <p className="muted">{t('targets.subtitle')}</p>
                 </div>
                 <div className="spacer"/>
-                <label className="switch" title="Abre o Chrome assim que o túnel ficar pronto, para targets com domínios ou URLs">
+                <label className="switch" title={t('targets.openChromeOnConnectHint')}>
                     <input type="checkbox" checked={autoChrome} onChange={e => onAutoChromeChange(e.target.checked)}/>
                     <span className="switch-track"/>
-                    <span>Abrir o Chrome ao conectar</span>
+                    <span>{t('targets.openChromeOnConnect')}</span>
                 </label>
             </header>
             <div className="card-grid">
@@ -63,20 +57,22 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome}: {
     region: string
     autoChrome: boolean
 }) {
-    const [error, setError] = useState('')
+    const {t, tm} = useI18n()
+    const [error, setError] = useState<Message | null>(null)
     const status: TunnelStatus = state?.status ?? 'idle'
     const busy = status === 'connecting' || status === 'login'
     const connected = status === 'connected'
     const usesBrowser = target.dnsHosts.length > 0 || target.openUrls.length > 0
     const secretText = useSecretText()
     const hidden = secretText !== ''
+    const message = error ?? (state?.message?.code ? state.message : null)
 
     const run = async (action: () => Promise<void>) => {
-        setError('')
+        setError(null)
         try {
             await action()
         } catch (err) {
-            setError(errorMessage(err))
+            setError(toMessage(err))
         }
     }
 
@@ -86,49 +82,49 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome}: {
                 <div>
                     <h2>{target.name}</h2>
                     <div className="muted small">
-                        perfil <strong>{target.profile}</strong>
-                        {loggedIn === false && <span className="tag warn">login necessário</span>}
+                        {t('targets.profile')} <strong>{target.profile}</strong>
+                        {loggedIn === false && <span className="tag warn">{t('targets.loginNeeded')}</span>}
                     </div>
                 </div>
                 <span className={`status-pill ${status}`}>
-                    <span className="dot"/>{statusLabels[status]}
+                    <span className="dot"/>{t(`status.${status}`)}
                 </span>
             </header>
 
             <dl className="facts">
-                <div><dt>Porta</dt><dd><code>{target.remotePort} → localhost:{target.localPort}</code></dd></div>
-                <div><dt>Região</dt><dd>{region}</dd></div>
-                <div className="wide"><dt>Host remoto</dt><dd className="truncate" title={hidden ? undefined : target.remoteHost}><Secret value={target.remoteHost}/></dd></div>
+                <div><dt>{t('targets.port')}</dt><dd><code>{target.remotePort} → localhost:{target.localPort}</code></dd></div>
+                <div><dt>{t('targets.region')}</dt><dd>{region}</dd></div>
+                <div className="wide"><dt>{t('targets.remoteHost')}</dt><dd className="truncate" title={hidden ? undefined : target.remoteHost}><Secret value={target.remoteHost}/></dd></div>
                 {target.dnsHosts.length > 0 && (
-                    <div className="wide"><dt>Domínios</dt><dd className="chips">
+                    <div className="wide"><dt>{t('targets.domains')}</dt><dd className="chips">
                         {target.dnsHosts.map(h => <span key={h} className="chip"><Secret value={h}/></span>)}
                     </dd></div>
                 )}
                 {target.openUrls.length > 0 && (
-                    <div className="wide"><dt>URLs</dt><dd className="chips">
+                    <div className="wide"><dt>{t('targets.urls')}</dt><dd className="chips">
                         {target.openUrls.map(u => <span key={u} className="chip"><Secret value={linkToURL(u)}/></span>)}
                     </dd></div>
                 )}
             </dl>
 
-            {(state?.message || error) && (
-                <p className={`card-message ${status === 'error' || error ? `error ${secretText}` : ''}`}>{error || state?.message}</p>
+            {message && (
+                <p className={`card-message ${status === 'error' || error ? `error ${secretText}` : ''}`}>{tm(message)}</p>
             )}
 
             <footer className="card-actions">
                 {connected || busy ? (
                     <button className="btn danger" onClick={() => run(() => api.disconnect(envName, target.name))}>
-                        <Icon name="stop"/> {busy ? 'Cancelar' : 'Desconectar'}
+                        <Icon name="stop"/> {busy ? t('common.cancel') : t('targets.disconnect')}
                     </button>
                 ) : (
                     <button className="btn primary" onClick={() => run(() => api.connect(target.name, autoChrome))}>
-                        <Icon name="play"/> Conectar
+                        <Icon name="play"/> {t('targets.connect')}
                     </button>
                 )}
                 {usesBrowser && (
                     <button className="btn" disabled={!connected} onClick={() => run(() => api.openChrome(target.name))}
-                            title={connected ? 'Abre o Chrome apontando para o túnel' : 'Conecte primeiro'}>
-                        <Icon name="globe"/> Abrir Chrome
+                            title={connected ? t('targets.openChromeHint') : t('targets.connectFirst')}>
+                        <Icon name="globe"/> {t('targets.openChrome')}
                     </button>
                 )}
             </footer>

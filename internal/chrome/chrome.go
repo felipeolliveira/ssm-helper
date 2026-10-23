@@ -3,7 +3,6 @@
 package chrome
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,10 +10,11 @@ import (
 	"strings"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/env"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 // ErrNotFound means chrome.exe could not be located.
-var ErrNotFound = errors.New("Chrome não encontrado neste computador")
+var ErrNotFound = msg.Err(msg.ChromeNotFound)
 
 // HostRules maps each dnsHosts entry to the local tunnel port.
 func HostRules(t env.Target) string {
@@ -50,7 +50,7 @@ func Launch(t env.Target, dataRoot string) (string, error) {
 	commandLine := fmt.Sprintf("%q %s", path, strings.Join(args, " "))
 	cmd := exec.Command(path, args...)
 	if err := cmd.Start(); err != nil {
-		return commandLine, fmt.Errorf("não foi possível abrir o Chrome: %w", err)
+		return commandLine, msg.Wrap(msg.ChromeOpenFailed, err)
 	}
 	go cmd.Wait()
 	return commandLine, nil

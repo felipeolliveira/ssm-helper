@@ -66,6 +66,10 @@ export function SetHideSensitive(arg1) {
   return window['go']['main']['App']['SetHideSensitive'](arg1);
 }
 
+export function SetLanguage(arg1) {
+  return window['go']['main']['App']['SetLanguage'](arg1);
+}
+
 export function SetOpenChromeOnConnect(arg1) {
   return window['go']['main']['App']['SetOpenChromeOnConnect'](arg1);
 }

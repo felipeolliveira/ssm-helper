@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 const (
@@ -19,9 +20,14 @@ const (
 	LegacyFileName = "ssm-helper.settings.json"
 )
 
+// Languages the frontend has dictionaries for.
+var Languages = []string{"pt-BR", "en"}
+
 type Settings struct {
 	// ActiveEnv is the selected environment name; env.DefaultName is env.json.
 	ActiveEnv string `json:"activeEnv"`
+	// Language is one of Languages, or empty to follow the Windows language.
+	Language string `json:"language"`
 	// HideSensitive masks accounts, hosts and domains on screen.
 	HideSensitive bool `json:"hideSensitive"`
 	// OpenChromeOnConnect opens Chrome when a tunnel with domains or URLs is ready.
@@ -46,7 +52,7 @@ const (
 // Load reads FileName (or LegacyFileName) from dir. Missing files give the
 // defaults; problems in the file are returned and the affected values fall
 // back to the defaults.
-func Load(dir string) (Settings, []string, Source, error) {
+func Load(dir string) (Settings, []msg.Message, Source, error) {
 	s := Default()
 	source := SourceFile
 	data, err := os.ReadFile(filepath.Join(dir, FileName))
@@ -65,6 +71,7 @@ func Load(dir string) (Settings, []string, Source, error) {
 		return s, nil, source, err
 	}
 	s.ActiveEnv = firstField(root, "activeEnv", "ACTIVE_CONFIG")
+	s.Language = ValidLanguage(jsonfile.Field(root, "language"))
 	s.HideSensitive = jsonfile.Bool(root, "hideSensitive", s.HideSensitive)
 	s.OpenChromeOnConnect = jsonfile.Bool(root, "openChromeOnConnect", s.OpenChromeOnConnect)
 	appearance, problems := ParseAppearance(jsonfile.Lookup(root, "appearance"))
@@ -74,8 +81,18 @@ func Load(dir string) (Settings, []string, Source, error) {
 	return s, problems, source, nil
 }
 
+// ValidLanguage returns lang when it is supported, or empty.
+func ValidLanguage(lang string) string {
+	for _, l := range Languages {
+		if l == lang {
+			return lang
+		}
+	}
+	return ""
+}
+
 // ValidateAppearance returns the problems of an appearance edited in the GUI.
-func ValidateAppearance(a Appearance) ([]string, error) {
+func ValidateAppearance(a Appearance) ([]msg.Message, error) {
 	data, err := jsonfile.Encode(&yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
 		jsonfile.Key("appearance"), marshalAppearance(a),
 	}})
@@ -92,7 +109,7 @@ func ValidateAppearance(a Appearance) ([]string, error) {
 
 // Save writes the settings to FileName in dir.
 func Save(dir string, s Settings) error {
-	root := jsonfile.Strings("activeEnv", s.ActiveEnv)
+	root := jsonfile.Strings("activeEnv", s.ActiveEnv, "language", s.Language)
 	root.Content = append(root.Content,
 		jsonfile.Key("hideSensitive"), jsonfile.BoolValue(s.HideSensitive),
 		jsonfile.Key("openChromeOnConnect"), jsonfile.BoolValue(s.OpenChromeOnConnect),

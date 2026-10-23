@@ -1,7 +1,6 @@
 package settings
 
 import (
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/env"
 	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 // Built-in palettes live in the code and cannot be removed; the settings file only adds palettes.
@@ -159,15 +159,16 @@ func IsLight(hex string) bool {
 
 // ParseAppearance reads an appearance object. Colors missing from
 // a palette come from ssm-light or ssm-dark, depending on its background.
-func ParseAppearance(node *yaml.Node) (Appearance, []string) {
+func ParseAppearance(node *yaml.Node) (Appearance, []msg.Message) {
 	a := DefaultAppearance()
 	if node == nil {
 		return a, nil
 	}
 	if node.Kind != yaml.MappingNode {
-		return a, []string{"appearance (deve ser um objeto)"}
+		return a, []msg.Message{msg.New(msg.PaletteAppearanceNotObject)}
 	}
-	var problems []string
+	var problems []msg.Message
+	add := func(code string, params ...string) { problems = append(problems, msg.New(code, params...)) }
 	if name := firstField(node, "palette", "PALETTE"); name != "" {
 		a.Palette = name
 	}
@@ -176,22 +177,22 @@ func ParseAppearance(node *yaml.Node) (Appearance, []string) {
 		for i := 0; i+1 < len(palettes.Content); i += 2 {
 			name, pnode := palettes.Content[i].Value, palettes.Content[i+1]
 			if isBuiltinPalette(name) {
-				problems = append(problems, fmt.Sprintf("appearance.palettes.%s (nome reservado para a paleta padrão)", name))
+				add(msg.PaletteReservedName, "path", "appearance.palettes."+name)
 				continue
 			}
 			if !env.NamePattern.MatchString(name) {
-				problems = append(problems, fmt.Sprintf("appearance.palettes.%s (%s)", name, env.InvalidNameHint))
+				add(msg.PaletteInvalidName, "path", "appearance.palettes."+name)
 			}
 			p := Palette{Name: name, Colors: map[string]string{}}
 			if pnode.Kind == yaml.MappingNode {
 				for j := 0; j+1 < len(pnode.Content); j += 2 {
 					key, value := colorKey(pnode.Content[j].Value), pnode.Content[j+1].Value
 					if _, known := builtinColors[PaletteSSMDark][key]; !known {
-						problems = append(problems, fmt.Sprintf("appearance.palettes.%s.%s (cor desconhecida)", name, key))
+						add(msg.PaletteUnknownColor, "path", "appearance.palettes."+name+"."+key)
 						continue
 					}
 					if !hexColorPattern.MatchString(value) {
-						problems = append(problems, fmt.Sprintf("appearance.palettes.%s.%s (cor inválida: use #rgb, #rrggbb ou #rrggbbaa)", name, key))
+						add(msg.PaletteInvalidColor, "path", "appearance.palettes."+name+"."+key)
 					}
 					p.Colors[key] = value
 				}
@@ -208,7 +209,7 @@ func ParseAppearance(node *yaml.Node) (Appearance, []string) {
 			a.Palettes = append(a.Palettes, p)
 		}
 	} else if palettes != nil && !(palettes.Kind == yaml.ScalarNode && palettes.Tag == "!!null") {
-		problems = append(problems, "appearance.palettes (deve ser um objeto { \"nome\": { cores } })")
+		add(msg.PaletteListNotObject)
 	}
 
 	found := isBuiltinPalette(a.Palette)
@@ -216,7 +217,7 @@ func ParseAppearance(node *yaml.Node) (Appearance, []string) {
 		found = found || p.Name == a.Palette
 	}
 	if !found {
-		problems = append(problems, fmt.Sprintf("appearance.palette (paleta '%s' não existe)", a.Palette))
+		add(msg.PaletteNotFound, "palette", a.Palette)
 	}
 	return a, problems
 }

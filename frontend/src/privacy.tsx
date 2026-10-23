@@ -1,5 +1,6 @@
 import {createContext, ReactNode, useCallback, useContext, useEffect, useState} from 'react'
 import {api} from './api'
+import {useI18n} from './i18n'
 
 // Hides account numbers, hosts, domains and other environment details on
 // screen, e.g. while sharing it. The choice is stored in ssm-helper.json.
@@ -44,8 +45,9 @@ export function Secret({value, keepLast}: {value: string, keepLast?: number}) {
 // MASK and is read-only, since editing a value you cannot see is error-prone.
 export function useSecretInput() {
     const {hidden} = usePrivacy()
+    const {t} = useI18n()
     return (value: string) => hidden
-        ? {value: value ? MASK : '', readOnly: true, className: 'secret-input', title: 'Mostre os dados sensíveis (ícone de olho) para editar'}
+        ? {value: value ? MASK : '', readOnly: true, className: 'secret-input', title: t('privacy.editHint')}
         : {}
 }
 

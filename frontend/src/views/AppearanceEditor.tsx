@@ -3,48 +3,20 @@ import {Appearance, Palette} from '../api'
 import {Field, MasterDetail} from '../components/Form'
 import {Icon} from '../components/Icon'
 import {isValidColor} from '../theme'
+import {useI18n} from '../i18n'
 
-// Color keys in ssm-helper.json, grouped as they are used in the UI
-const colorGroups: {title: string, colors: {key: string, label: string}[]}[] = [
-    {
-        title: 'Fundos e bordas',
-        colors: [
-            {key: 'bgDeep', label: 'Fundo da janela (define se a paleta é clara ou escura)'},
-            {key: 'bgBase', label: 'Barra lateral, log e campos'},
-            {key: 'bgCard', label: 'Cards'},
-            {key: 'bgElevated', label: 'Destaques e hover'},
-            {key: 'border', label: 'Bordas'},
-            {key: 'borderStrong', label: 'Bordas de botões e campos'},
-        ],
-    },
-    {
-        title: 'Texto',
-        colors: [
-            {key: 'textPrimary', label: 'Texto principal'},
-            {key: 'textSecondary', label: 'Texto secundário'},
-            {key: 'textMuted', label: 'Legendas e rótulos'},
-            {key: 'textFaint', label: 'Placeholders e horários'},
-        ],
-    },
-    {
-        title: 'Cor principal',
-        colors: [
-            {key: 'primary', label: 'Botões, abas e itens ativos'},
-            {key: 'primary600', label: 'Hover da cor principal'},
-            {key: 'primarySoft', label: 'Fundo de itens ativos'},
-            {key: 'primaryDeep', label: 'Texto sobre a cor principal, quando ela é clara'},
-            {key: 'primaryGlow', label: 'Brilho de destaque'},
-        ],
-    },
-    {
-        title: 'Status',
-        colors: [
-            {key: 'success', label: 'Conectado'},
-            {key: 'warning', label: 'Avisos'},
-            {key: 'danger', label: 'Erros e desconectar'},
-            {key: 'info', label: 'Informações'},
-        ],
-    },
+// Color keys in ssm-helper.json, grouped as they are used in the UI; labels
+// come from the "colors" section of the dictionaries.
+type ColorKey = 'bgDeep' | 'bgBase' | 'bgCard' | 'bgElevated' | 'border' | 'borderStrong'
+    | 'textPrimary' | 'textSecondary' | 'textMuted' | 'textFaint'
+    | 'primary' | 'primary600' | 'primarySoft' | 'primaryDeep' | 'primaryGlow'
+    | 'success' | 'warning' | 'danger' | 'info'
+
+const colorGroups: {group: 'backgrounds' | 'text' | 'primary' | 'status', keys: ColorKey[]}[] = [
+    {group: 'backgrounds', keys: ['bgDeep', 'bgBase', 'bgCard', 'bgElevated', 'border', 'borderStrong']},
+    {group: 'text', keys: ['textPrimary', 'textSecondary', 'textMuted', 'textFaint']},
+    {group: 'primary', keys: ['primary', 'primary600', 'primarySoft', 'primaryDeep', 'primaryGlow']},
+    {group: 'status', keys: ['success', 'warning', 'danger', 'info']},
 ]
 
 const previewKeys = ['bgDeep', 'bgCard', 'primary', 'textPrimary', 'success', 'danger']
@@ -68,6 +40,7 @@ export default function AppearanceEditor({appearance, builtins, onChange}: {
     builtins: Palette[]
     onChange: (appearance: Appearance) => void
 }) {
+    const {t} = useI18n()
     // Built-in palettes come first and are read-only; the others are stored in ssm-helper.json
     const all = [...builtins, ...appearance.palettes]
     const [selected, setSelected] = useState(() => Math.max(0, all.findIndex(p => p.name === appearance.palette)))
@@ -87,7 +60,7 @@ export default function AppearanceEditor({appearance, builtins, onChange}: {
         const base = all[index] ?? builtins[0]
         if (!base) return
         const copy: Palette = {
-            name: uniqueName(`${base.name.replace(/^ssm-/, '')}-copia`, all.map(p => p.name)),
+            name: uniqueName(`${base.name.replace(/^ssm-/, '')}-${t('palette.copySuffix')}`, all.map(p => p.name)),
             colors: {...base.colors},
             builtIn: false,
         }
@@ -113,7 +86,7 @@ export default function AppearanceEditor({appearance, builtins, onChange}: {
                 return (
                     <button
                         className={`activate-btn ${active ? 'active' : ''}`}
-                        title={active ? 'Paleta ativa' : 'Ativar esta paleta'}
+                        title={active ? t('palette.active') : t('palette.activate')}
                         aria-pressed={active}
                         disabled={!name}
                         onClick={() => !active && onChange({...appearance, palette: name})}
@@ -122,7 +95,7 @@ export default function AppearanceEditor({appearance, builtins, onChange}: {
                     </button>
                 )
             }}
-            addLabel="Nova paleta"
+            addLabel={t('palette.new')}
             onAdd={() => duplicate(selected)}
             canRemove={index => !all[index].builtIn}
             onRemove={index => {
@@ -135,8 +108,8 @@ export default function AppearanceEditor({appearance, builtins, onChange}: {
             }}
             removeWarning={index => {
                 const palette = all[index]
-                if (palette.builtIn) return 'Paleta padrão do app: não pode ser editada nem excluída.'
-                return palette.name === appearance.palette ? `É a paleta ativa; ao remover, o app volta para ${builtins[0]?.name}.` : ''
+                if (palette.builtIn) return t('palette.builtInLocked')
+                return palette.name === appearance.palette ? t('palette.activeRemoveWarning', {palette: builtins[0]?.name ?? ''}) : ''
             }}
             render={index => (
                 <PaletteForm
@@ -157,28 +130,30 @@ function PaletteForm({palette, builtins, onChange, onDuplicate}: {
     onChange: (p: Palette) => void
     onDuplicate: () => void
 }) {
+    const {t} = useI18n()
     const readOnly = palette.builtIn
     const setColor = (key: string, value: string) => onChange({...palette, colors: {...palette.colors, [key]: value}})
     const reserved = builtins.some(b => b.name === palette.name)
     const nameError = readOnly ? ''
-        : !/^[A-Za-z0-9._-]+$/.test(palette.name) ? "Use apenas letras, números, '.', '_' ou '-'"
-            : reserved ? 'Nome reservado para uma paleta padrão' : ''
+        : !/^[A-Za-z0-9._-]+$/.test(palette.name) ? t('common.nameRule')
+            : reserved ? t('palette.reservedName') : ''
 
     return (
         <div className="form-grid">
-            <Field label="Nome" error={nameError}
-                   hint={readOnly ? <span className="lock-badge"><Icon name="lock" size={11}/> Paleta padrão</span> : undefined}>
+            <Field label={t('palette.name')} error={nameError}
+                   hint={readOnly ? <span className="lock-badge"><Icon name="lock" size={11}/> {t('palette.builtIn')}</span> : undefined}>
                 <input value={palette.name} disabled={readOnly} onChange={e => onChange({...palette, name: e.target.value})}/>
             </Field>
             <div className="field-actions">
-                <button className="btn" onClick={onDuplicate}><Icon name="copy"/> Duplicar e editar</button>
+                <button className="btn" onClick={onDuplicate}><Icon name="copy"/> {t('palette.duplicate')}</button>
             </div>
 
-            {colorGroups.map(group => (
-                <div key={group.title} className="wide">
-                    <h3 className="form-section">{group.title}</h3>
+            {colorGroups.map(({group, keys}) => (
+                <div key={group} className="wide">
+                    <h3 className="form-section">{t(`colors.groups.${group}`)}</h3>
                     <div className="color-grid" style={{marginTop: 10}}>
-                        {group.colors.map(({key, label}) => {
+                        {keys.map(key => {
+                            const label = t(`colors.${key}`)
                             const value = palette.colors[key] ?? ''
                             const valid = isValidColor(value)
                             const {rgb, alpha} = splitHex(value)
@@ -193,7 +168,7 @@ function PaletteForm({palette, builtins, onChange, onDuplicate}: {
                                     <input type="text" value={value} spellCheck={false} disabled={readOnly}
                                            onChange={e => setColor(key, e.target.value.trim())}/>
                                     <span className={valid ? 'field-hint' : 'field-error'}>
-                                        {valid ? key : `${key}: use #rgb, #rrggbb ou #rrggbbaa`}
+                                        {valid ? key : t('palette.colorRule', {key})}
                                     </span>
                                 </label>
                             )

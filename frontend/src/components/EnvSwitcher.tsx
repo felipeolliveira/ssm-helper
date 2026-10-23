@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from 'react'
 import {EnvList, envLabel} from '../api'
 import {Icon} from './Icon'
+import {useI18n} from '../i18n'
 
 // Environment selector in the sidebar; tunnels of other environments keep running.
 export default function EnvSwitcher({list, onSelect, onNew}: {
@@ -8,6 +9,7 @@ export default function EnvSwitcher({list, onSelect, onNew}: {
     onSelect: (name: string) => void
     onNew: () => void
 }) {
+    const {t} = useI18n()
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)
 
@@ -30,13 +32,13 @@ export default function EnvSwitcher({list, onSelect, onNew}: {
 
     return (
         <div className="env-switcher" ref={ref}>
-            <span className="switcher-label">Ambiente ativo</span>
+            <span className="switcher-label">{t('sidebar.activeEnv')}</span>
             <button className={`switcher-button ${open ? 'open' : ''}`} onClick={() => setOpen(o => !o)}
                     aria-haspopup="listbox" aria-expanded={open}>
                 <Icon name="file"/>
-                <span className="truncate">{list ? (envs.length ? envLabel(list.active) : 'Nenhum') : '...'}</span>
+                <span className="truncate">{list ? (envs.length ? envLabel(list.active) : t('sidebar.noEnv')) : '...'}</span>
                 {otherTunnels > 0 && (
-                    <span className="nav-badge" title="Túneis abertos em outros ambientes">{otherTunnels}</span>
+                    <span className="nav-badge" title={t('sidebar.otherTunnels')}>{otherTunnels}</span>
                 )}
                 <Icon name="chevron"/>
             </button>
@@ -55,7 +57,7 @@ export default function EnvSwitcher({list, onSelect, onNew}: {
                                 <span className="muted small truncate">{c.file}</span>
                             </span>
                             {c.activeTunnels > 0 && (
-                                <span className="nav-badge" title="Túneis abertos">{c.activeTunnels}</span>
+                                <span className="nav-badge" title={t('sidebar.openTunnels')}>{c.activeTunnels}</span>
                             )}
                         </button>
                     ))}
@@ -65,7 +67,7 @@ export default function EnvSwitcher({list, onSelect, onNew}: {
                         onNew()
                     }}>
                         <span className="switcher-check"><Icon name="plus" size={14}/></span>
-                        <span className="switcher-name">Novo ambiente</span>
+                        <span className="switcher-name">{t('sidebar.newEnv')}</span>
                     </button>
                 </div>
             )}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 func TestLoadExample(t *testing.T) {
@@ -81,8 +82,7 @@ func TestLoadNotFound(t *testing.T) {
 
 func TestParseInvalidJSON(t *testing.T) {
 	_, _, err := Parse("x", []byte(`{"title": `))
-	var formatErr *jsonfile.FormatError
-	if !errors.As(err, &formatErr) {
+	if !jsonfile.IsFormatError(err) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -111,17 +111,17 @@ func TestParseProblems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{
-		"title",
-		"profiles.bad name (nome inválido: use apenas letras, números, '.', '_' ou '-')",
-		"profiles.ok.roleName",
-		"targets.web.profile (perfil 'missing' não existe em profiles)",
-		"targets.web.dnsHosts (domínio inválido: bad_host!)",
-		"targets.web.openUrls (URL inválida: *.example.com)",
-		"targets.web.chromeProfile (nome inválido: use apenas letras, números, '.', '_' ou '-')",
+	want := []msg.Message{
+		msg.New(msg.EnvFieldRequired, "path", "title"),
+		msg.New(msg.EnvInvalidName, "path", "profiles.bad name"),
+		msg.New(msg.EnvFieldRequired, "path", "profiles.ok.roleName"),
+		msg.New(msg.EnvProfileNotFound, "path", "targets.web.profile", "profile", "missing"),
+		msg.New(msg.EnvInvalidDomain, "path", "targets.web.dnsHosts", "value", "bad_host!"),
+		msg.New(msg.EnvInvalidURL, "path", "targets.web.openUrls", "value", "*.example.com"),
+		msg.New(msg.EnvInvalidName, "path", "targets.web.chromeProfile"),
 	}
 	if !reflect.DeepEqual(problems, want) {
-		t.Errorf("problems =\n%q\nwant\n%q", problems, want)
+		t.Errorf("problems =\n%+v\nwant\n%+v", problems, want)
 	}
 }
 
@@ -130,9 +130,9 @@ func TestParseEmptySections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"profiles (nenhum perfil definido)", "targets (nenhum target definido)"}
+	want := []msg.Message{msg.New(msg.EnvNoProfiles), msg.New(msg.EnvNoTargets)}
 	if !reflect.DeepEqual(problems, want) {
-		t.Errorf("problems = %q", problems)
+		t.Errorf("problems = %+v", problems)
 	}
 }
 

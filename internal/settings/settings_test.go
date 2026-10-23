@@ -17,7 +17,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	teal := builtinPalette(PaletteSSMDark)
 	teal.Name, teal.BuiltIn = "teal", false
 	teal.Colors["primary"] = "#2dd4bf"
-	s = Settings{ActiveEnv: "qa", HideSensitive: true, OpenChromeOnConnect: false, Appearance: Appearance{Palette: "teal", Palettes: []Palette{teal}}}
+	s = Settings{ActiveEnv: "qa", Language: "en", HideSensitive: true, OpenChromeOnConnect: false, Appearance: Appearance{Palette: "teal", Palettes: []Palette{teal}}}
 	if err := Save(dir, s); err != nil {
 		t.Fatal(err)
 	}
@@ -60,5 +60,11 @@ func TestValidateAppearance(t *testing.T) {
 	}
 	if len(problems) != 2 {
 		t.Errorf("problems = %q", problems)
+	}
+}
+
+func TestValidLanguage(t *testing.T) {
+	if ValidLanguage("en") != "en" || ValidLanguage("pt-BR") != "pt-BR" || ValidLanguage("fr") != "" {
+		t.Error("ValidLanguage accepted or rejected the wrong values")
 	}
 }

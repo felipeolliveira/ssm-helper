@@ -5,11 +5,12 @@ import {
     AppearanceState,
     EnvList,
     EnvState,
-    errorMessage,
+    Message,
     events,
     LogEntry,
     ProfileStatus,
     SSOCode,
+    toMessage,
     TunnelState,
     tunnelKey,
 } from './api'
@@ -17,15 +18,16 @@ import {activePalette, applyPalette} from './theme'
 import TargetsView from './views/TargetsView'
 import ProfilesView from './views/ProfilesView'
 import EnvView from './views/EnvView'
-import AppearanceView from './views/AppearanceView'
+import PreferencesView from './views/PreferencesView'
 import LogPanel from './components/LogPanel'
 import SSOBanner from './components/SSOBanner'
 import EnvSwitcher from './components/EnvSwitcher'
 import NewEnvDialog from './components/NewEnvDialog'
 import {Icon, IconName} from './components/Icon'
 import {usePrivacy} from './privacy'
+import {useI18n} from './i18n'
 
-type View = 'targets' | 'profiles' | 'env' | 'appearance'
+type View = 'targets' | 'profiles' | 'env' | 'preferences'
 
 const MAX_LOGS = 500
 
@@ -40,7 +42,8 @@ export default function App() {
     const [ssoCodes, setSSOCodes] = useState<Record<string, SSOCode>>({})
     const [logOpen, setLogOpen] = useState(false)
     const [autoChrome, setAutoChrome] = useState(true)
-    const [loadError, setLoadError] = useState('')
+    const [loadError, setLoadError] = useState<Message | null>(null)
+    const {t, tm} = useI18n()
     const [appearanceState, setAppearanceState] = useState<AppearanceState | null>(null)
     // Unsaved palette edits from the appearance screen, shown live
     const [previewAppearance, setPreviewAppearance] = useState<Appearance | null>(null)
@@ -72,7 +75,7 @@ export default function App() {
         try {
             setEnvList(await api.listEnvs())
         } catch (err) {
-            setLoadError(errorMessage(err))
+            setLoadError(toMessage(err))
         }
     }, [])
 
@@ -86,9 +89,9 @@ export default function App() {
     const reloadEnv = useCallback(async () => {
         try {
             applyEnvState(await api.getEnv())
-            setLoadError('')
+            setLoadError(null)
         } catch (err) {
-            setLoadError(errorMessage(err))
+            setLoadError(toMessage(err))
         }
     }, [applyEnvState])
 
@@ -97,15 +100,15 @@ export default function App() {
             const state = await api.selectEnv(name)
             applyEnvState(state)
             if (!state.error && state.problems.length === 0 && view === 'env') setView('targets')
-            setLoadError('')
+            setLoadError(null)
         } catch (err) {
-            setLoadError(errorMessage(err))
+            setLoadError(toMessage(err))
         }
     }
 
     useEffect(() => {
         reloadEnv()
-        api.getAppearance().then(setAppearanceState).catch(err => setLoadError(errorMessage(err)))
+        api.getAppearance().then(setAppearanceState).catch(err => setLoadError(toMessage(err)))
         api.getPreferences().then(p => setAutoChrome(p.openChromeOnConnect)).catch(() => {})
         api.startupMessages().then(entries => {
             addLogs(entries)
@@ -138,7 +141,7 @@ export default function App() {
 
     const toggleAutoChrome = (value: boolean) => {
         setAutoChrome(value)
-        api.setOpenChromeOnConnect(value).catch(err => setLoadError(errorMessage(err)))
+        api.setOpenChromeOnConnect(value).catch(err => setLoadError(toMessage(err)))
     }
 
     const activeName = envState?.name ?? ''
@@ -148,10 +151,10 @@ export default function App() {
     )
 
     const nav: {id: View, label: string, icon: IconName, disabled?: boolean}[] = [
-        {id: 'targets', label: 'Targets', icon: 'plug', disabled: !envUsable},
-        {id: 'profiles', label: 'Perfis AWS', icon: 'user', disabled: !envUsable},
-        {id: 'env', label: 'Ambiente', icon: 'settings'},
-        {id: 'appearance', label: 'Aparência', icon: 'palette', disabled: !appearanceState},
+        {id: 'targets', label: t('nav.targets'), icon: 'plug', disabled: !envUsable},
+        {id: 'profiles', label: t('nav.profiles'), icon: 'user', disabled: !envUsable},
+        {id: 'env', label: t('nav.env'), icon: 'settings'},
+        {id: 'preferences', label: t('nav.preferences'), icon: 'palette', disabled: !appearanceState},
     ]
 
     return (
@@ -165,7 +168,7 @@ export default function App() {
                     </div>
                     <button className={`btn ghost icon-only privacy-toggle ${privacy.hidden ? 'on' : ''}`}
                             onClick={privacy.toggle} aria-pressed={privacy.hidden}
-                            title={privacy.hidden ? 'Mostrar dados sensíveis' : 'Ocultar dados sensíveis (contas, hosts, domínios)'}>
+                            title={privacy.hidden ? t('sidebar.showSensitive') : t('sidebar.hideSensitive')}>
                         <Icon name={privacy.hidden ? 'eyeOff' : 'eye'} size={18}/>
                     </button>
                 </div>
@@ -192,7 +195,7 @@ export default function App() {
                     <EnvSwitcher list={envList} onSelect={selectEnv} onNew={() => setNewEnvOpen(true)}/>
                     <button className={`nav-item ${logOpen ? 'active' : ''}`} onClick={() => setLogOpen(o => !o)}>
                         <Icon name="terminal"/>
-                        <span>Log</span>
+                        <span>{t('nav.log')}</span>
                         {logs.length > 0 && <span className="nav-count">{logs.length}</span>}
                     </button>
                 </div>
@@ -200,17 +203,17 @@ export default function App() {
 
             <main className="main">
                 <SSOBanner codes={Object.values(ssoCodes)} onCancel={profile => api.cancelLogin(profile)}/>
-                {loadError && <div className="alert error">{loadError}</div>}
+                {loadError && <div className="alert error">{tm(loadError)}</div>}
                 <div className="content">
-                    {view === 'appearance' && appearanceState ? (
-                        <AppearanceView
+                    {view === 'preferences' && appearanceState ? (
+                        <PreferencesView
                             saved={appearanceState.appearance}
                             builtins={appearanceState.builtins}
                             onPreview={setPreviewAppearance}
                             onSaved={a => setAppearanceState(s => (s ? {...s, appearance: a} : s))}
                         />
                     ) : !envState ? (
-                        <div className="empty">Carregando ambiente...</div>
+                        <div className="empty">{t('common.loading')}</div>
                     ) : view === 'targets' && envUsable ? (
                         <TargetsView
                             envName={activeName}

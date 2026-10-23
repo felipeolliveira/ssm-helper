@@ -10,6 +10,7 @@ build:
 test:
 	go vet ./...
 	go test ./...
+	node scripts/check-i18n.mjs
 	cd frontend && npx tsc --noEmit
 
 dev:
