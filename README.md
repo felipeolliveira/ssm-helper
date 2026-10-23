@@ -318,6 +318,17 @@ Para rodar o `.exe` usando outra pasta para os ambientes, o `ssm-helper.json` e 
 SSM_HELPER_DIR="$PWD" WSLENV="SSM_HELPER_DIR/p" ./build/bin/ssm-helper.exe
 ```
 
+### Releases
+
+O workflow `.github/workflows/release.yml` compila e publica o `.exe`:
+
+1. Crie uma release com uma tag no formato `vX.Y.Z`, pela página de Releases do GitHub ou com `gh release create v1.2.0 --title v1.2.0 --notes "..."`.
+2. Ao publicar a release, o workflow roda num Windows do GitHub, faz os mesmos testes do `make test`, compila e anexa à release o `ssm-helper.exe` e o `SHA256SUMS.txt`.
+
+A versão nas propriedades do `.exe` vem da tag (`v1.2.0` vira `1.2.0`), então não é preciso mudar o `wails.json` a cada versão. O workflow também pode ser rodado à mão (**Actions → Release → Run workflow**) para uma tag existente: o build fica como artefato da execução e, com **upload** marcado, substitui os arquivos da release.
+
+Por enquanto só há build para Windows.
+
 ### Internacionalização
 
 O backend nunca envia texto para o usuário. Tudo o que ele comunica (erros, status dos túneis, linhas do Log, problemas de validação) é um `msg.Message`: um **código** (`TUNNEL_PORT_IN_USE`), **parâmetros** (`{"port": "8443"}`) e, quando houver, um **detalhe** técnico bruto, como o erro da AWS. Os erros dos bindings chegam ao frontend como o JSON dessa mensagem.
