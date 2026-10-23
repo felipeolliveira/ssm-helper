@@ -3,8 +3,8 @@ package env
 import (
 	"gopkg.in/yaml.v3"
 
-	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
-	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
+	"github.com/felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/felipeolliveira/ssm-helper/internal/msg"
 )
 
 // Marshal writes the environment as JSON, keeping the order of profiles and targets.

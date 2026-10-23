@@ -28,7 +28,7 @@ No administrator rights are needed, not even for local ports below 1024 such as 
 
 ## Installation
 
-1. Download `ssm-helper.exe` from the [Releases page](https://github.com/v-felipeolliveira/ssm-helper/releases/latest), create a folder of your own for the app, for example `C:\Users\<you>\Tools\ssm-helper`, and put the `.exe` in it. To check the download, compare the file's SHA-256 (`Get-FileHash .\ssm-helper.exe`, in PowerShell) with the release's `SHA256SUMS.txt`.
+1. Download `ssm-helper.exe` from the [Releases page](https://github.com/felipeolliveira/ssm-helper/releases/latest), create a folder of your own for the app, for example `C:\Users\<you>\Tools\ssm-helper`, and put the `.exe` in it. To check the download, compare the file's SHA-256 (`Get-FileHash .\ssm-helper.exe`, in PowerShell) with the release's `SHA256SUMS.txt`.
 2. Open `ssm-helper.exe`.
 3. The first time, the **Environment** screen opens by itself. Add the profiles and targets and click **Save**. If you already have environment files (`env.json` or `env.<name>.json`), put them in the same folder as the `.exe` before opening it.
 

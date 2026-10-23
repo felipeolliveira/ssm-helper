@@ -23,9 +23,9 @@ import (
 	"github.com/aws/session-manager-plugin/src/sessionmanagerplugin/session"
 	_ "github.com/aws/session-manager-plugin/src/sessionmanagerplugin/session/portsession"
 
-	"github.com/v-felipeolliveira/ssm-helper/internal/env"
-	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
-	"github.com/v-felipeolliveira/ssm-helper/internal/sso"
+	"github.com/felipeolliveira/ssm-helper/internal/env"
+	"github.com/felipeolliveira/ssm-helper/internal/msg"
+	"github.com/felipeolliveira/ssm-helper/internal/sso"
 )
 
 // PluginArg is the first argument that makes the executable run as the plugin.

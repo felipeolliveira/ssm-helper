@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
+	"github.com/felipeolliveira/ssm-helper/internal/msg"
 )
 
 func writeFiles(t *testing.T, dir string, files map[string]string) {

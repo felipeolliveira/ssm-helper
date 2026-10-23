@@ -7,9 +7,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/v-felipeolliveira/ssm-helper/internal/env"
-	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
-	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
+	"github.com/felipeolliveira/ssm-helper/internal/env"
+	"github.com/felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/felipeolliveira/ssm-helper/internal/msg"
 )
 
 // Built-in palettes live in the code and cannot be removed; the settings file only adds palettes.

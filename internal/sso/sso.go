@@ -20,8 +20,8 @@ import (
 	ssooidctypes "github.com/aws/aws-sdk-go-v2/service/ssooidc/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
-	"github.com/v-felipeolliveira/ssm-helper/internal/env"
-	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
+	"github.com/felipeolliveira/ssm-helper/internal/env"
+	"github.com/felipeolliveira/ssm-helper/internal/msg"
 )
 
 // ErrLoginRequired means there is no valid SSO token for the profile's start URL.
