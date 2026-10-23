@@ -250,6 +250,20 @@ export namespace main {
 	        this.renameCurrentTo = source["renameCurrentTo"];
 	    }
 	}
+	export class Preferences {
+	    hideSensitive: boolean;
+	    openChromeOnConnect: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Preferences(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hideSensitive = source["hideSensitive"];
+	        this.openChromeOnConnect = source["openChromeOnConnect"];
+	    }
+	}
 	export class ProfileStatus {
 	    name: string;
 	    loggedIn: boolean;

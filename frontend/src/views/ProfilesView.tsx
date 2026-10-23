@@ -1,6 +1,7 @@
 import {useState} from 'react'
 import {api, Env, errorMessage, ProfileStatus} from '../api'
 import {Icon} from '../components/Icon'
+import {Secret, useSecretText} from '../privacy'
 
 function formatExpiry(iso: string) {
     if (!iso) return ''
@@ -14,6 +15,7 @@ export default function ProfilesView({env, statuses, onRefresh}: {
     onRefresh: () => void
 }) {
     const [pending, setPending] = useState<Record<string, boolean>>({})
+    const secretText = useSecretText()
     const [messages, setMessages] = useState<Record<string, {text: string, error: boolean}>>({})
 
     const login = async (name: string) => {
@@ -59,9 +61,9 @@ export default function ProfilesView({env, statuses, onRefresh}: {
                         return (
                             <tr key={profile.name}>
                                 <td><strong>{profile.name}</strong>
-                                    {message && <div className={`small ${message.error ? 'text-error' : 'muted'}`}>{message.text}</div>}
+                                    {message && <div className={`small ${message.error ? `text-error ${secretText}` : 'muted'}`}>{message.text}</div>}
                                 </td>
-                                <td><code>{profile.accountId}</code></td>
+                                <td><code><Secret value={profile.accountId} keepLast={4}/></code></td>
                                 <td>{profile.roleName}</td>
                                 <td>{profile.ssoRegion}</td>
                                 <td>

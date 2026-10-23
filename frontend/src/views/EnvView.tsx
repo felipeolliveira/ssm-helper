@@ -2,6 +2,7 @@ import {ChangeEvent, useEffect, useMemo, useState} from 'react'
 import {api, Env, EnvState, emptyEnv, emptyProfile, emptyTarget, errorMessage, Profile, Target} from '../api'
 import {Icon} from '../components/Icon'
 import {Field, MasterDetail} from '../components/Form'
+import {Secret, usePrivacy, useSecretInput, useSecretText} from '../privacy'
 
 type Tab = 'general' | 'profiles' | 'targets'
 
@@ -33,6 +34,9 @@ export default function EnvView({state, hasActiveTunnels, onSaved, onReload}: {
     onSaved: (state: EnvState) => void
     onReload: () => void
 }) {
+    const {hidden} = usePrivacy()
+    // Problems can quote invalid hosts and URLs
+    const secretText = useSecretText()
     const [draft, setDraft] = useState<Env | null>(state.env)
     const [tab, setTab] = useState<Tab>('targets')
     const [selectedProfile, setSelectedProfile] = useState(0)
@@ -99,7 +103,7 @@ export default function EnvView({state, hasActiveTunnels, onSaved, onReload}: {
             <header className="page-header">
                 <div className="spacer">
                     <h1>Ambiente</h1>
-                    <p className="muted small mono" title={state.path}>{state.path}</p>
+                    <p className="muted small mono" title={hidden ? undefined : state.path}><Secret value={state.path}/></p>
                 </div>
                 <button className="btn ghost" onClick={() => api.openAppFolder()}><Icon name="folder"/> Abrir pasta</button>
                 <button className="btn ghost" onClick={onReload} title={`Lê de novo o ${state.file} do disco`}><Icon name="refresh"/> Recarregar</button>
@@ -145,11 +149,11 @@ export default function EnvView({state, hasActiveTunnels, onSaved, onReload}: {
                     <Icon name="alert" size={18}/>
                     <div>
                         <strong>Corrija os campos abaixo antes de usar:</strong>
-                        <ul>{problems.map(p => <li key={p}><code>{p}</code></li>)}</ul>
+                        <ul className={secretText}>{problems.map(p => <li key={p}><code>{p}</code></li>)}</ul>
                     </div>
                 </div>
             )}
-            {saveError && <div className="alert error">{saveError}</div>}
+            {saveError && <div className={`alert error ${secretText}`}>{saveError}</div>}
             {savedNotice && !dirty && <div className="alert success"><Icon name="check"/> Ambiente salvo.</div>}
             {hasActiveTunnels && dirty && (
                 <div className="alert info">Os túneis abertos continuam com as definições anteriores até serem reconectados.</div>
@@ -177,7 +181,7 @@ export default function EnvView({state, hasActiveTunnels, onSaved, onReload}: {
 
                     {tab === 'profiles' && (
                         <MasterDetail
-                            items={draft.profiles.map(p => ({name: p.name, sub: p.accountId}))}
+                            items={draft.profiles.map(p => ({name: p.name, sub: <Secret value={p.accountId} keepLast={4}/>}))}
                             selected={selectedProfile}
                             onSelect={setSelectedProfile}
                             addLabel="Novo perfil"
@@ -254,6 +258,7 @@ function required(value: string) {
 }
 
 function ProfileForm({profile, onChange}: {profile: Profile, onChange: (p: Profile, previousName: string) => void}) {
+    const secret = useSecretInput()
     const set = (field: keyof Profile) => (e: ChangeEvent<HTMLInputElement>) =>
         onChange({...profile, [field]: e.target.value}, profile.name)
     return (
@@ -265,11 +270,11 @@ function ProfileForm({profile, onChange}: {profile: Profile, onChange: (p: Profi
                 <input value={profile.ssoRegion} onChange={set('ssoRegion')} placeholder="us-east-1"/>
             </Field>
             <Field label="URL de início do SSO" error={required(profile.ssoUrl)} wide>
-                <input value={profile.ssoUrl} onChange={set('ssoUrl')}
+                <input value={profile.ssoUrl} {...secret(profile.ssoUrl)} onChange={set('ssoUrl')}
                        placeholder="https://identitycenter.amazonaws.com/ssoins-..."/>
             </Field>
             <Field label="ID da conta" error={required(profile.accountId)}>
-                <input value={profile.accountId} onChange={set('accountId')} placeholder="111111111111"/>
+                <input value={profile.accountId} {...secret(profile.accountId)} onChange={set('accountId')} placeholder="111111111111"/>
             </Field>
             <Field label="Role (permission set)" error={required(profile.roleName)}>
                 <input value={profile.roleName} onChange={set('roleName')} placeholder="AdministratorAccess"/>
@@ -283,6 +288,7 @@ function TargetForm({target, profiles, onChange}: {
     profiles: Profile[]
     onChange: (t: Target) => void
 }) {
+    const secret = useSecretInput()
     const set = (field: keyof Target) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
         onChange({...target, [field]: e.target.value})
     const profileRegion = profiles.find(p => p.name === target.profile)?.ssoRegion
@@ -309,7 +315,7 @@ function TargetForm({target, profiles, onChange}: {
                 </select>
             </Field>
             <Field label="Instância (ssmTarget)" error={required(target.ssmTarget)} hint="EC2 com o SSM Agent, usada como ponte.">
-                <input value={target.ssmTarget} onChange={set('ssmTarget')} placeholder="i-0123456789abcdef0"/>
+                <input value={target.ssmTarget} {...secret(target.ssmTarget)} onChange={set('ssmTarget')} placeholder="i-0123456789abcdef0"/>
             </Field>
             <Field label="Região" hint={profileRegion ? `Vazio usa a região do perfil (${profileRegion}).` : 'Vazio usa a região do perfil.'}>
                 <input value={target.ssmRegion} onChange={set('ssmRegion')} placeholder={profileRegion || 'us-east-1'}/>
@@ -318,7 +324,7 @@ function TargetForm({target, profiles, onChange}: {
                 <input value={target.ssmDocument} onChange={set('ssmDocument')}/>
             </Field>
             <Field label="Host remoto" error={required(target.remoteHost)} hint="Acessível a partir da instância." wide>
-                <input value={target.remoteHost} onChange={set('remoteHost')} placeholder="internal-meu-alb.us-east-1.elb.amazonaws.com"/>
+                <input value={target.remoteHost} {...secret(target.remoteHost)} onChange={set('remoteHost')} placeholder="internal-meu-alb.us-east-1.elb.amazonaws.com"/>
             </Field>
             <Field label="Porta remota" error={required(target.remotePort)}>
                 <input value={target.remotePort} onChange={set('remotePort')} inputMode="numeric" placeholder="443"/>
@@ -330,14 +336,14 @@ function TargetForm({target, profiles, onChange}: {
             <h3 className="form-section wide">Navegador (opcional)</h3>
             <Field label="Domínios no Chrome (dnsHosts)" wide
                    hint="Separados por espaço. O Chrome aberto pelo app resolve esses domínios para o túnel. Aceita curinga, como *.qa.example.com.">
-                <input value={dnsText} placeholder="qa.example.com api.qa.example.com"
+                <input value={dnsText} {...secret(dnsText)} placeholder="qa.example.com api.qa.example.com"
                        onChange={e => {
                            setDnsText(e.target.value)
                            onChange({...target, dnsHosts: splitList(e.target.value)})
                        }}/>
             </Field>
             <Field label="URLs abertas ao conectar (openUrls)" wide hint="Separadas por espaço. Sem http(s)://, usa https://.">
-                <input value={urlText} placeholder="qa.example.com"
+                <input value={urlText} {...secret(urlText)} placeholder="qa.example.com"
                        onChange={e => {
                            setUrlText(e.target.value)
                            onChange({...target, openUrls: splitList(e.target.value)})

@@ -2,6 +2,7 @@
 env.json
 env.*.json
 ssm-helper.json
+ssm-helper-data/
 *.json.bak
 *.json.tmp
 
@@ -22,6 +23,7 @@ frontend/dist/*
 frontend/package.json.md5
 
 # Editors and OS
+*:Zone.Identifier
 .vscode/
 .idea/
 Thumbs.db

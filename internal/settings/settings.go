@@ -1,6 +1,6 @@
 // Package settings keeps the app preferences that are not part of an
-// environment: the selected environment and the appearance. They are stored in
-// ssm-helper.json next to the executable, so the app stays portable.
+// environment: the selected environment, screen options and the appearance.
+// They are stored in ssm-helper.json next to the executable, so the app stays portable.
 package settings
 
 import (
@@ -21,13 +21,17 @@ const (
 
 type Settings struct {
 	// ActiveEnv is the selected environment name; env.DefaultName is env.json.
-	ActiveEnv  string     `json:"activeEnv"`
-	Appearance Appearance `json:"appearance"`
+	ActiveEnv string `json:"activeEnv"`
+	// HideSensitive masks accounts, hosts and domains on screen.
+	HideSensitive bool `json:"hideSensitive"`
+	// OpenChromeOnConnect opens Chrome when a tunnel with domains or URLs is ready.
+	OpenChromeOnConnect bool       `json:"openChromeOnConnect"`
+	Appearance          Appearance `json:"appearance"`
 }
 
-// Default uses env.json and the ssm-dark palette.
+// Default uses env.json, shows all data, opens Chrome on connect and uses the ssm-dark palette.
 func Default() Settings {
-	return Settings{Appearance: DefaultAppearance()}
+	return Settings{OpenChromeOnConnect: true, Appearance: DefaultAppearance()}
 }
 
 // Source tells where Load read the settings from.
@@ -61,6 +65,8 @@ func Load(dir string) (Settings, []string, Source, error) {
 		return s, nil, source, err
 	}
 	s.ActiveEnv = firstField(root, "activeEnv", "ACTIVE_CONFIG")
+	s.HideSensitive = jsonfile.Bool(root, "hideSensitive", s.HideSensitive)
+	s.OpenChromeOnConnect = jsonfile.Bool(root, "openChromeOnConnect", s.OpenChromeOnConnect)
 	appearance, problems := ParseAppearance(jsonfile.Lookup(root, "appearance"))
 	if len(problems) == 0 {
 		s.Appearance = appearance
@@ -87,7 +93,11 @@ func ValidateAppearance(a Appearance) ([]string, error) {
 // Save writes the settings to FileName in dir.
 func Save(dir string, s Settings) error {
 	root := jsonfile.Strings("activeEnv", s.ActiveEnv)
-	root.Content = append(root.Content, jsonfile.Key("appearance"), marshalAppearance(s.Appearance))
+	root.Content = append(root.Content,
+		jsonfile.Key("hideSensitive"), jsonfile.BoolValue(s.HideSensitive),
+		jsonfile.Key("openChromeOnConnect"), jsonfile.BoolValue(s.OpenChromeOnConnect),
+		jsonfile.Key("appearance"), marshalAppearance(s.Appearance),
+	)
 	data, err := jsonfile.Encode(root)
 	if err != nil {
 		return err

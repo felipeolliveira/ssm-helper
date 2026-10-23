@@ -98,6 +98,26 @@ func StringList(values []string) *yaml.Node {
 	return node
 }
 
+// Bool reads a boolean, returning fallback when the key is missing or not a boolean.
+func Bool(node *yaml.Node, key string, fallback bool) bool {
+	switch strings.ToLower(Field(node, key)) {
+	case "true":
+		return true
+	case "false":
+		return false
+	}
+	return fallback
+}
+
+// BoolValue builds a boolean value.
+func BoolValue(v bool) *yaml.Node {
+	value := "false"
+	if v {
+		value = "true"
+	}
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: value}
+}
+
 // Key builds an object key.
 func Key(name string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Value: name}
@@ -117,7 +137,7 @@ func Strings(pairs ...string) *yaml.Node {
 }
 
 // Encode writes an object node as indented JSON. Scalars are written as
-// strings; lists of strings are written on one line.
+// strings, except booleans built with BoolValue; lists are written on one line.
 func Encode(root *yaml.Node) ([]byte, error) {
 	var b bytes.Buffer
 	if err := encode(&b, root, ""); err != nil {
@@ -167,6 +187,10 @@ func encode(b *bytes.Buffer, node *yaml.Node, indent string) error {
 		}
 		b.WriteByte(']')
 	case yaml.ScalarNode:
+		if node.Tag == "!!bool" && (node.Value == "true" || node.Value == "false") {
+			b.WriteString(node.Value)
+			return nil
+		}
 		return writeString(b, node.Value)
 	default:
 		return errors.New("jsonfile: unsupported node")
