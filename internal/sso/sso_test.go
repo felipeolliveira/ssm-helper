@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/env"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 func TestStatusUsesCachedToken(t *testing.T) {
@@ -40,5 +41,21 @@ func TestExpiredTokenWithoutRefreshRequiresLogin(t *testing.T) {
 	}
 	if _, err := m.Credentials(context.Background(), p); err != ErrLoginRequired {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// A region that is not an AWS region name is refused before any request, so
+// the SSO token is never sent to a host built from it.
+func TestCredentialsRefuseInvalidRegion(t *testing.T) {
+	m := NewManager(t.TempDir(), nil)
+	p := env.Profile{Name: "qa", SSOURL: "https://example.awsapps.com/start", SSORegion: "evil.example.com/x"}
+	if err := m.writeCache(&cachedToken{StartURL: p.SSOURL, Region: "us-east-1", AccessToken: "t", ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Credentials(context.Background(), p); msg.From(err).Code != msg.RegionInvalid {
+		t.Fatalf("Credentials err = %v", err)
+	}
+	if err := m.Login(context.Background(), p, nil); msg.From(err).Code != msg.RegionInvalid {
+		t.Fatalf("Login err = %v", err)
 	}
 }

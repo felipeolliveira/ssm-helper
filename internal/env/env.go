@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -56,7 +57,26 @@ var (
 	dnsPattern     = regexp.MustCompile(`^[A-Za-z0-9._~:/?#&=%+*-]+$`)
 	dnsHostPattern = regexp.MustCompile(`^[A-Za-z0-9.*-]+$`)
 	urlHostPattern = regexp.MustCompile(`^[A-Za-z0-9.-]+$`)
+	// regionPattern accepts AWS region names (us-east-1, sa-east-1, us-gov-west-1).
+	// The SDK builds endpoint hosts from the region without checking it, so a
+	// value like "evil.example.com/x" would send tokens to another host.
+	regionPattern = regexp.MustCompile(`^[a-z]{2}(-[a-z]+)+-[0-9]+$`)
+	portPattern   = regexp.MustCompile(`^[0-9]{1,5}$`)
 )
+
+// ValidRegion reports whether region looks like an AWS region name.
+func ValidRegion(region string) bool {
+	return regionPattern.MatchString(region)
+}
+
+// ValidPort reports whether port is a number from 1 to 65535.
+func ValidPort(port string) bool {
+	if !portPattern.MatchString(port) {
+		return false
+	}
+	n, err := strconv.Atoi(port)
+	return err == nil && n >= 1 && n <= 65535
+}
 
 // Field keys, with the old UPPER_CASE key each one replaced
 var (
@@ -138,6 +158,9 @@ func Parse(path string, data []byte) (*Env, []msg.Message, error) {
 					add(msg.EnvFieldRequired, "path", "profiles."+name+"."+f[0])
 				}
 			}
+			if region := e.Profiles[len(e.Profiles)-1].SSORegion; region != "" && !ValidRegion(region) {
+				add(msg.EnvInvalidRegion, "path", "profiles."+name+".ssoRegion", "value", region)
+			}
 		}
 	} else {
 		add(msg.EnvSectionMissing, "section", "profiles")
@@ -171,6 +194,14 @@ func Parse(path string, data []byte) (*Env, []msg.Message, error) {
 			for _, f := range requiredTargetFields {
 				if tf(f) == "" {
 					add(msg.EnvFieldRequired, "path", "targets."+name+"."+f)
+				}
+			}
+			if t.SSMRegion != "" && !ValidRegion(t.SSMRegion) {
+				add(msg.EnvInvalidRegion, "path", "targets."+name+".ssmRegion", "value", t.SSMRegion)
+			}
+			for _, port := range [][2]string{{"remotePort", t.RemotePort}, {"localPort", t.LocalPort}} {
+				if port[1] != "" && !ValidPort(port[1]) {
+					add(msg.EnvInvalidPort, "path", "targets."+name+"."+port[0], "value", port[1])
 				}
 			}
 			if t.Profile != "" && !profileNames[t.Profile] {

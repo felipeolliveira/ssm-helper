@@ -225,6 +225,9 @@
     "ENV_PROFILE_NOT_FOUND": "{path}: o perfil '{profile}' não existe em profiles",
     "ENV_INVALID_DOMAIN": "{path}: domínio inválido ({value})",
     "ENV_INVALID_URL": "{path}: URL inválida ({value})",
+    "ENV_INVALID_REGION": "{path}: região inválida ({value}); use um nome de região AWS, como us-east-1",
+    "ENV_INVALID_PORT": "{path}: porta inválida ({value}); use um número de 1 a 65535",
+    "REGION_INVALID": "A região '{region}' não é uma região AWS válida",
 
     "ENV_NOT_FOUND": "Arquivo do ambiente não encontrado",
     "ENV_DOES_NOT_EXIST": "O ambiente '{name}' não existe",
