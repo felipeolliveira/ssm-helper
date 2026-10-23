@@ -91,7 +91,8 @@ func TestParseProblems(t *testing.T) {
 	data := `{
   "profiles": {
     "bad name": {"ssoUrl": "x"},
-    "ok": {"ssoUrl": "x", "ssoRegion": "us-east-1", "accountId": "123"}
+    "ok": {"ssoUrl": "x", "ssoRegion": "us-east-1", "accountId": "123"},
+    "bad-region": {"ssoUrl": "x", "ssoRegion": "us-east-1.evil.com", "accountId": "1", "roleName": "r"}
   },
   "targets": {
     "web": {
@@ -100,7 +101,8 @@ func TestParseProblems(t *testing.T) {
       "ssmDocument": "doc",
       "remoteHost": "host",
       "remotePort": "443",
-      "localPort": "8443",
+      "localPort": "8443,MAP * 1.2.3.4",
+      "ssmRegion": "evil.example.com/x",
       "dnsHosts": ["*.qa.example.com", "bad_host!"],
       "openUrls": ["https://qa.example.com/path", "*.example.com"],
       "chromeProfile": "a b"
@@ -115,6 +117,9 @@ func TestParseProblems(t *testing.T) {
 		msg.New(msg.EnvFieldRequired, "path", "title"),
 		msg.New(msg.EnvInvalidName, "path", "profiles.bad name"),
 		msg.New(msg.EnvFieldRequired, "path", "profiles.ok.roleName"),
+		msg.New(msg.EnvInvalidRegion, "path", "profiles.bad-region.ssoRegion", "value", "us-east-1.evil.com"),
+		msg.New(msg.EnvInvalidRegion, "path", "targets.web.ssmRegion", "value", "evil.example.com/x"),
+		msg.New(msg.EnvInvalidPort, "path", "targets.web.localPort", "value", "8443,MAP * 1.2.3.4"),
 		msg.New(msg.EnvProfileNotFound, "path", "targets.web.profile", "profile", "missing"),
 		msg.New(msg.EnvInvalidDomain, "path", "targets.web.dnsHosts", "value", "bad_host!"),
 		msg.New(msg.EnvInvalidURL, "path", "targets.web.openUrls", "value", "*.example.com"),
@@ -172,5 +177,24 @@ func TestLoadReadsFile(t *testing.T) {
 	e, _, err := Load(path)
 	if err != nil || e.Path != path || e.Title != "t" {
 		t.Fatalf("env = %+v, err = %v", e, err)
+	}
+}
+
+func TestValidRegionAndPort(t *testing.T) {
+	for region, want := range map[string]bool{
+		"us-east-1": true, "sa-east-1": true, "us-gov-west-1": true, "ap-southeast-2": true,
+		"": false, "us-east-1.evil.com": false, "evil.example.com/x": false, "US-EAST-1": false, "us-east": false,
+	} {
+		if ValidRegion(region) != want {
+			t.Errorf("ValidRegion(%q) = %v", region, !want)
+		}
+	}
+	for port, want := range map[string]bool{
+		"1": true, "443": true, "65535": true,
+		"0": false, "65536": false, "-1": false, "+80": false, "8443,MAP * x": false, "": false, "080a": false,
+	} {
+		if ValidPort(port) != want {
+			t.Errorf("ValidPort(%q) = %v", port, !want)
+		}
 	}
 }

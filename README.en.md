@@ -120,6 +120,8 @@ If you edit the file by hand, use **Reload** to read it again. Tunnels already o
 
 The full example is in `env.json.example`. The order of profiles and targets in the file is the order they appear on screen.
 
+Regions must be AWS region names (`us-east-1`, `sa-east-1`, `us-gov-west-1`) and ports numbers from 1 to 65535. The app refuses other values because they would go into the AWS service addresses and the Chrome mapping: a region such as `evil.example.com/x` would send the SSO login to another server. Be careful with environment files received from others.
+
 #### Root
 
 | Field | Required | Description |
@@ -135,7 +137,7 @@ Each key is the name of an AWS profile. Names accept only letters, numbers, `.`,
 | Field | Required | Description |
 |---|---|---|
 | `ssoUrl` | Yes | IAM Identity Center start URL |
-| `ssoRegion` | Yes | Identity Center region. Also the default region of the profile's targets |
+| `ssoRegion` | Yes | Identity Center region, such as `us-east-1`. Also the default region of the profile's targets |
 | `accountId` | Yes | AWS account ID (12 digits) |
 | `roleName` | Yes | Role (permission set) name in SSO |
 
@@ -147,11 +149,11 @@ Each key is the name of a tunnel destination. Names accept only letters, numbers
 |---|---|---|
 | `profile` | Yes | Profile used to connect to this target. Must exist in `profiles` |
 | `ssmTarget` | Yes | ID of the EC2 instance with the SSM Agent, used as the bridge |
-| `ssmRegion` | No | Instance region. When empty, the profile's `ssoRegion` is used |
+| `ssmRegion` | No | Instance region, such as `us-east-1`. When empty, the profile's `ssoRegion` is used |
 | `ssmDocument` | Yes | SSM document, usually `AWS-StartPortForwardingSessionToRemoteHost` |
 | `remoteHost` | Yes | Destination host, reachable from the instance |
-| `remotePort` | Yes | Port on the destination host |
-| `localPort` | Yes | Local port exposed on your machine |
+| `remotePort` | Yes | Port on the destination host, from 1 to 65535 |
+| `localPort` | Yes | Local port exposed on your machine, from 1 to 65535 |
 | `dnsHosts` | No | Domains Chrome resolves to the tunnel. Wildcards work, like `*.qa.example.com` (see [Accessing through the browser](#accessing-through-the-browser-with-the-original-domain)) |
 | `openUrls` | No | URLs opened in Chrome tabs on connect. Without `http(s)://`, `https://` is used |
 | `chromeProfile` | No | Chrome profile used by the target. When empty, the target name is used. Accepts only letters, numbers, `.`, `_` and `-` (see [Chrome profile](#chrome-profile)) |
