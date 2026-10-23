@@ -10,8 +10,10 @@
     "name": "Felipe Oliveira"
   },
   "info": {
+    "companyName": "Felipe Oliveira",
     "productName": "SSM Helper",
     "productVersion": "1.0.0",
-    "comments": "Túneis AWS SSM com login SSO"
+    "copyright": "Copyright © 2026 Felipe Oliveira",
+    "comments": "AWS SSM tunnels with SSO login"
   }
 }
