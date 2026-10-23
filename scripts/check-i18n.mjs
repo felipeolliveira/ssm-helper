@@ -2,8 +2,10 @@
 // in each dictionary of frontend/src/i18n/locales. Run by `make test`.
 import {readFileSync, readdirSync} from 'node:fs'
 import {join} from 'node:path'
+import {fileURLToPath} from 'node:url'
 
-const root = new URL('..', import.meta.url).pathname
+// fileURLToPath also works on Windows, where URL.pathname gives /C:/...
+const root = fileURLToPath(new URL('..', import.meta.url))
 const codesFile = readFileSync(join(root, 'internal/msg/codes.go'), 'utf8')
 const codes = [...codesFile.matchAll(/^\s*\w+\s*=\s*"([A-Z0-9_]+)"/gm)].map(m => m[1])
 

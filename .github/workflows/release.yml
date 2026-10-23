@@ -1,0 +1,124 @@
+# Builds ssm-helper.exe and attaches it to a release.
+#
+# - Publishing a release (on GitHub or with `gh release create`) builds the
+#   release's tag and uploads ssm-helper.exe and SHA256SUMS.txt to it.
+# - Running it by hand builds an existing tag; with "upload" on, the files
+#   replace the ones in that tag's release. The build is also kept as a
+#   workflow artifact.
+#
+# The version in the .exe properties comes from the tag: v1.2.0 -> 1.2.0.
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build (for example v1.0.0)
+        required: true
+      upload:
+        description: Attach the build to the tag's release
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  WAILS_VERSION: v2.17.0
+
+jobs:
+  windows:
+    name: Build for Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Read the version from the tag
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::The tag must look like v1.2.3, got '$TAG'"
+            exit 1
+          fi
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install the Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # Same checks as `make test`, without depending on make in the runner
+      - name: Test
+        run: |
+          go vet ./...
+          go test ./...
+          node scripts/check-i18n.mjs
+          (cd frontend && npx tsc --noEmit)
+
+      - name: Set the version in wails.json
+        run: |
+          node -e '
+            const fs = require("fs")
+            const config = JSON.parse(fs.readFileSync("wails.json", "utf8"))
+            config.info.productVersion = process.env.VERSION
+            fs.writeFileSync("wails.json", JSON.stringify(config, null, 2) + "\n")
+          '
+
+      - name: Build
+        run: wails build -clean -platform windows/amd64 -trimpath -ldflags "-s -w"
+
+      - name: Check the build
+        shell: pwsh
+        run: |
+          $exe = "build/bin/ssm-helper.exe"
+          $info = [System.Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path $exe))
+          if ($info.ProductVersion -ne $env:VERSION) {
+            throw "ProductVersion is '$($info.ProductVersion)', expected '$env:VERSION'"
+          }
+          # The embedded Session Manager plugin must answer on its own
+          & $exe --ssm-session-plugin --version
+          if ($LASTEXITCODE -ne 0) { throw "the embedded plugin did not run" }
+          "{0} {1}, {2:N1} MB" -f $info.ProductName, $info.ProductVersion, ((Get-Item $exe).Length / 1MB)
+
+      - name: Write checksums
+        working-directory: build/bin
+        run: sha256sum ssm-helper.exe > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - name: Keep the build as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssm-helper-${{ env.TAG }}-windows-amd64
+          path: |
+            build/bin/ssm-helper.exe
+            build/bin/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Attach to the release
+        if: github.event_name == 'release' || inputs.upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" build/bin/ssm-helper.exe build/bin/SHA256SUMS.txt --clobber
