@@ -120,6 +120,8 @@ Se você editar o arquivo à mão, use **Recarregar** para ler de novo. Túneis 
 
 O exemplo completo está em `env.json.example`. A ordem dos perfis e targets no arquivo é a ordem em que aparecem na tela.
 
+As regiões precisam ser nomes de região da AWS (`us-east-1`, `sa-east-1`, `us-gov-west-1`) e as portas, números de 1 a 65535. O app recusa outros valores porque eles iriam para os endereços dos serviços da AWS e para o mapeamento do Chrome: uma região como `evil.example.com/x` mandaria o login SSO para outro servidor. Cuidado com arquivos de ambiente recebidos de terceiros.
+
 #### Raiz
 
 | Campo | Obrigatório | Descrição |
@@ -135,7 +137,7 @@ Cada chave é o nome de um perfil AWS. O nome aceita só letras, números, `.`, 
 | Campo | Obrigatório | Descrição |
 |---|---|---|
 | `ssoUrl` | Sim | URL de início do IAM Identity Center |
-| `ssoRegion` | Sim | Região do Identity Center. Também é a região padrão dos targets do perfil |
+| `ssoRegion` | Sim | Região do Identity Center, como `us-east-1`. Também é a região padrão dos targets do perfil |
 | `accountId` | Sim | ID da conta AWS (12 dígitos) |
 | `roleName` | Sim | Nome da role (permission set) no SSO |
 
@@ -147,11 +149,11 @@ Cada chave é o nome de um destino de túnel. O nome aceita só letras, números
 |---|---|---|
 | `profile` | Sim | Perfil usado para conectar neste target. Deve existir em `profiles` |
 | `ssmTarget` | Sim | ID da instância EC2 com o SSM Agent, usada como ponte |
-| `ssmRegion` | Não | Região da instância. Se ficar vazio, usa a `ssoRegion` do perfil |
+| `ssmRegion` | Não | Região da instância, como `us-east-1`. Se ficar vazio, usa a `ssoRegion` do perfil |
 | `ssmDocument` | Sim | Documento SSM, normalmente `AWS-StartPortForwardingSessionToRemoteHost` |
 | `remoteHost` | Sim | Host de destino, acessível a partir da instância |
-| `remotePort` | Sim | Porta no host de destino |
-| `localPort` | Sim | Porta local exposta na sua máquina |
+| `remotePort` | Sim | Porta no host de destino, de 1 a 65535 |
+| `localPort` | Sim | Porta local exposta na sua máquina, de 1 a 65535 |
 | `dnsHosts` | Não | Domínios que o Chrome resolve para o túnel. Aceita curinga, como `*.qa.example.com` (veja [Acessar pelo navegador](#acessar-pelo-navegador-com-o-domínio-original)) |
 | `openUrls` | Não | URLs abertas em abas no Chrome ao conectar. Sem `http(s)://`, usa `https://` |
 | `chromeProfile` | Não | Perfil do Chrome usado pelo target. Se ficar vazio, usa o nome do target. Aceita só letras, números, `.`, `_` e `-` (veja [Perfil do Chrome](#perfil-do-chrome)) |

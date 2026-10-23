@@ -65,6 +65,10 @@ func Start(ctx context.Context, creds aws.Credentials, p env.Profile, t env.Targ
 	}
 
 	region := t.Region(p)
+	// The SDK builds the endpoint host from the region without checking it
+	if !env.ValidRegion(region) {
+		return nil, msg.Err(msg.RegionInvalid, "region", region)
+	}
 	client := ssm.NewFromConfig(sso.AWSConfig(creds, region))
 	out, err := client.StartSession(ctx, &ssm.StartSessionInput{
 		Target:       aws.String(t.SSMTarget),
