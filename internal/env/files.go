@@ -1,8 +1,6 @@
 package env
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -11,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 // Environment files live next to the executable: env.<name>.json, or env.json
@@ -82,10 +81,10 @@ func validName(name string) bool {
 // ValidateNewName checks the name of an environment to be created in dir.
 func ValidateNewName(dir, name string) error {
 	if !validName(name) {
-		return errors.New("nome inválido: use apenas letras, números, '_' ou '-'")
+		return msg.Err(msg.EnvNewNameInvalid)
 	}
 	if _, err := os.Stat(filepath.Join(dir, FileName(name))); err == nil {
-		return fmt.Errorf("já existe um ambiente '%s'", name)
+		return msg.Err(msg.EnvNameTaken, "name", name)
 	}
 	return nil
 }
@@ -150,7 +149,7 @@ func MigrateLegacy(dir string) (Migration, error) {
 			}
 			e, _, err := Parse(from, data)
 			if err != nil {
-				return m, fmt.Errorf("%s: %w", from, err)
+				return m, msg.Wrap(msg.EnvMigrationFailed, err, "file", from)
 			}
 			out, err := Marshal(e)
 			if err != nil {

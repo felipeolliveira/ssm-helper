@@ -6,7 +6,6 @@ package env
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -14,10 +13,11 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 // ErrNotFound means the environment file does not exist at the expected path.
-var ErrNotFound = errors.New("arquivo do ambiente não encontrado")
+var ErrNotFound = msg.Err(msg.EnvNotFound)
 
 type Profile struct {
 	Name      string `json:"name"`
@@ -58,9 +58,6 @@ var (
 	urlHostPattern = regexp.MustCompile(`^[A-Za-z0-9.-]+$`)
 )
 
-// InvalidNameHint explains NamePattern in validation messages.
-const InvalidNameHint = "nome inválido: use apenas letras, números, '.', '_' ou '-'"
-
 // Field keys, with the old UPPER_CASE key each one replaced
 var (
 	profileFields = [][2]string{
@@ -86,7 +83,7 @@ var (
 
 // Load reads an environment file. It returns ErrNotFound, a *jsonfile.FormatError,
 // or the environment together with the list of validation problems (empty when valid).
-func Load(path string) (*Env, []string, error) {
+func Load(path string) (*Env, []msg.Message, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil, ErrNotFound
@@ -98,27 +95,28 @@ func Load(path string) (*Env, []string, error) {
 }
 
 // Parse validates environment content (JSON; YAML is also accepted for migration); see Load.
-func Parse(path string, data []byte) (*Env, []string, error) {
+func Parse(path string, data []byte) (*Env, []msg.Message, error) {
 	root, err := jsonfile.Parse(data)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	e := &Env{Path: path, Profiles: []Profile{}, Targets: []Target{}}
-	var problems []string
+	var problems []msg.Message
+	add := func(code string, params ...string) { problems = append(problems, msg.New(code, params...)) }
 
 	e.Title = jsonfile.Field(root, "title")
 	if e.Title == "" {
 		e.Title = jsonfile.Field(jsonfile.Object(root, "variables"), "MENU_TITLE")
 	}
 	if e.Title == "" {
-		problems = append(problems, "title")
+		add(msg.EnvFieldRequired, "path", "title")
 	}
 
 	profileNames := map[string]bool{}
 	if profiles := jsonfile.Object(root, "profiles"); profiles != nil {
 		if len(profiles.Content) == 0 {
-			problems = append(problems, "profiles (nenhum perfil definido)")
+			add(msg.EnvNoProfiles)
 		}
 		for i := 0; i+1 < len(profiles.Content); i += 2 {
 			name, node := profiles.Content[i].Value, profiles.Content[i+1]
@@ -132,22 +130,22 @@ func Parse(path string, data []byte) (*Env, []string, error) {
 				RoleName:  field(node, profileFields[3]),
 			})
 			if !NamePattern.MatchString(name) {
-				problems = append(problems, fmt.Sprintf("profiles.%s (%s)", name, InvalidNameHint))
+				add(msg.EnvInvalidName, "path", "profiles."+name)
 				continue
 			}
 			for _, f := range profileFields {
 				if field(node, f) == "" {
-					problems = append(problems, fmt.Sprintf("profiles.%s.%s", name, f[0]))
+					add(msg.EnvFieldRequired, "path", "profiles."+name+"."+f[0])
 				}
 			}
 		}
 	} else {
-		problems = append(problems, "profiles (seção ausente)")
+		add(msg.EnvSectionMissing, "section", "profiles")
 	}
 
 	if targets := jsonfile.Object(root, "targets"); targets != nil {
 		if len(targets.Content) == 0 {
-			problems = append(problems, "targets (nenhum target definido)")
+			add(msg.EnvNoTargets)
 		}
 		for i := 0; i+1 < len(targets.Content); i += 2 {
 			name, node := targets.Content[i].Value, targets.Content[i+1]
@@ -167,33 +165,33 @@ func Parse(path string, data []byte) (*Env, []string, error) {
 			}
 			e.Targets = append(e.Targets, t)
 			if !NamePattern.MatchString(name) {
-				problems = append(problems, fmt.Sprintf("targets.%s (%s)", name, InvalidNameHint))
+				add(msg.EnvInvalidName, "path", "targets."+name)
 				continue
 			}
 			for _, f := range requiredTargetFields {
 				if tf(f) == "" {
-					problems = append(problems, fmt.Sprintf("targets.%s.%s", name, f))
+					add(msg.EnvFieldRequired, "path", "targets."+name+"."+f)
 				}
 			}
 			if t.Profile != "" && !profileNames[t.Profile] {
-				problems = append(problems, fmt.Sprintf("targets.%s.profile (perfil '%s' não existe em profiles)", name, t.Profile))
+				add(msg.EnvProfileNotFound, "path", "targets."+name+".profile", "profile", t.Profile)
 			}
 			for _, link := range t.DNSHosts {
 				if !dnsPattern.MatchString(link) || !dnsHostPattern.MatchString(LinkToHost(link)) {
-					problems = append(problems, fmt.Sprintf("targets.%s.dnsHosts (domínio inválido: %s)", name, link))
+					add(msg.EnvInvalidDomain, "path", "targets."+name+".dnsHosts", "value", link)
 				}
 			}
 			for _, link := range t.OpenURLs {
 				if !linkPattern.MatchString(link) || !urlHostPattern.MatchString(LinkToHost(link)) {
-					problems = append(problems, fmt.Sprintf("targets.%s.openUrls (URL inválida: %s)", name, link))
+					add(msg.EnvInvalidURL, "path", "targets."+name+".openUrls", "value", link)
 				}
 			}
 			if t.ChromeProfile != "" && !NamePattern.MatchString(t.ChromeProfile) {
-				problems = append(problems, fmt.Sprintf("targets.%s.chromeProfile (%s)", name, InvalidNameHint))
+				add(msg.EnvInvalidName, "path", "targets."+name+".chromeProfile")
 			}
 		}
 	} else {
-		problems = append(problems, "targets (seção ausente)")
+		add(msg.EnvSectionMissing, "section", "targets")
 	}
 
 	return e, problems, nil

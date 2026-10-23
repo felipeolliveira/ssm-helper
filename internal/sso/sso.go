@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -22,10 +21,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/env"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 // ErrLoginRequired means there is no valid SSO token for the profile's start URL.
-var ErrLoginRequired = errors.New("sessão SSO expirada ou inexistente")
+var ErrLoginRequired = msg.Err(msg.SSOLoginExpired)
 
 const (
 	clientName      = "ssm-helper"
@@ -111,7 +111,7 @@ func (m *Manager) Login(ctx context.Context, p env.Profile, onCode func(DeviceCo
 			Scopes:     []string{accountScope},
 		})
 		if err != nil {
-			return fmt.Errorf("falha ao registrar o cliente SSO: %w", err)
+			return msg.Wrap(msg.SSORegisterFailed, err)
 		}
 		clientID, clientSecret = aws.ToString(reg.ClientId), aws.ToString(reg.ClientSecret)
 		clientSecretExpiresAt = time.Unix(reg.ClientSecretExpiresAt, 0)
@@ -125,7 +125,7 @@ func (m *Manager) Login(ctx context.Context, p env.Profile, onCode func(DeviceCo
 		StartUrl:     aws.String(p.SSOURL),
 	})
 	if err != nil {
-		return fmt.Errorf("falha ao iniciar o login SSO: %w", err)
+		return msg.Wrap(msg.SSOStartFailed, err)
 	}
 
 	code := DeviceCode{
@@ -153,7 +153,7 @@ func (m *Manager) Login(ctx context.Context, p env.Profile, onCode func(DeviceCo
 		case <-time.After(interval):
 		}
 		if time.Now().After(deadline) {
-			return errors.New("o código de login expirou antes da confirmação no navegador")
+			return msg.Err(msg.SSOCodeExpired)
 		}
 
 		out, err := client.CreateToken(ctx, &ssooidc.CreateTokenInput{
@@ -171,7 +171,7 @@ func (m *Manager) Login(ctx context.Context, p env.Profile, onCode func(DeviceCo
 			interval += 5 * time.Second
 			continue
 		case err != nil:
-			return fmt.Errorf("falha no login SSO: %w", err)
+			return msg.Wrap(msg.SSOLoginFailed, err)
 		}
 
 		token := &cachedToken{
@@ -210,7 +210,7 @@ func (m *Manager) Credentials(ctx context.Context, p env.Profile) (aws.Credentia
 		RoleName:    aws.String(p.RoleName),
 	})
 	if err != nil {
-		return aws.Credentials{}, fmt.Errorf("falha ao obter credenciais da role: %w", err)
+		return aws.Credentials{}, msg.Wrap(msg.SSORoleCredentialsFailed, err)
 	}
 	rc := out.RoleCredentials
 	creds = aws.Credentials{
@@ -236,7 +236,7 @@ func (m *Manager) Verify(ctx context.Context, p env.Profile) error {
 	}
 	client := sts.NewFromConfig(AWSConfig(creds, p.SSORegion))
 	if _, err := client.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{}); err != nil {
-		return fmt.Errorf("falha ao verificar acesso AWS (STS): %w", err)
+		return msg.Wrap(msg.SSOVerifyFailed, err, "role", p.RoleName)
 	}
 	return nil
 }

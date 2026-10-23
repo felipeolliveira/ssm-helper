@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 // parse reads the appearance object of a JSON/YAML document, like Load does.
-func parse(t *testing.T, data string) (Appearance, []string) {
+func parse(t *testing.T, data string) (Appearance, []msg.Message) {
 	t.Helper()
 	root, err := jsonfile.Parse([]byte(data))
 	if err != nil {
@@ -70,14 +71,14 @@ appearance:
       MODE: "dark"
 `
 	_, problems := parse(t, data)
-	want := []string{
-		"appearance.palettes.ssm-dark (nome reservado para a paleta padrão)",
-		"appearance.palettes.custom.primary (cor inválida: use #rgb, #rrggbb ou #rrggbbaa)",
-		"appearance.palettes.custom.MODE (cor desconhecida)",
-		"appearance.palette (paleta 'nope' não existe)",
+	want := []msg.Message{
+		msg.New(msg.PaletteReservedName, "path", "appearance.palettes.ssm-dark"),
+		msg.New(msg.PaletteInvalidColor, "path", "appearance.palettes.custom.primary"),
+		msg.New(msg.PaletteUnknownColor, "path", "appearance.palettes.custom.MODE"),
+		msg.New(msg.PaletteNotFound, "palette", "nope"),
 	}
 	if got := problems; !reflect.DeepEqual(got, want) {
-		t.Errorf("problems =\n%q\nwant\n%q", got, want)
+		t.Errorf("problems =\n%+v\nwant\n%+v", got, want)
 	}
 }
 

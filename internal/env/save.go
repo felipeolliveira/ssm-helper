@@ -4,6 +4,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 // Marshal writes the environment as JSON, keeping the order of profiles and targets.
@@ -48,7 +49,7 @@ func Marshal(e *Env) ([]byte, error) {
 // Save validates and writes the environment to path. When there are problems
 // the file is left untouched and the problems are returned. The previous file
 // is kept as <path>.bak.
-func Save(path string, e *Env) ([]string, error) {
+func Save(path string, e *Env) ([]msg.Message, error) {
 	data, err := Marshal(e)
 	if err != nil {
 		return nil, err

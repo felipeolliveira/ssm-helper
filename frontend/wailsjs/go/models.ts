@@ -181,7 +181,7 @@ export namespace main {
 	    file: string;
 	    path: string;
 	    env?: env.Env;
-	    problems: string[];
+	    problems: msg.Message[];
 	    error: string;
 	    errorDetail: string;
 	
@@ -195,7 +195,7 @@ export namespace main {
 	        this.file = source["file"];
 	        this.path = source["path"];
 	        this.env = this.convertValues(source["env"], env.Env);
-	        this.problems = source["problems"];
+	        this.problems = this.convertValues(source["problems"], msg.Message);
 	        this.error = source["error"];
 	        this.errorDetail = source["errorDetail"];
 	    }
@@ -221,7 +221,7 @@ export namespace main {
 	export class LogEntry {
 	    time: string;
 	    source: string;
-	    text: string;
+	    message: msg.Message;
 	
 	    static createFrom(source: any = {}) {
 	        return new LogEntry(source);
@@ -231,8 +231,26 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.time = source["time"];
 	        this.source = source["source"];
-	        this.text = source["text"];
+	        this.message = this.convertValues(source["message"], msg.Message);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class NewEnvRequest {
 	    name: string;
@@ -251,6 +269,7 @@ export namespace main {
 	    }
 	}
 	export class Preferences {
+	    language: string;
 	    hideSensitive: boolean;
 	    openChromeOnConnect: boolean;
 	
@@ -260,6 +279,7 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.language = source["language"];
 	        this.hideSensitive = source["hideSensitive"];
 	        this.openChromeOnConnect = source["openChromeOnConnect"];
 	    }
@@ -281,7 +301,7 @@ export namespace main {
 	    }
 	}
 	export class SaveResult {
-	    problems: string[];
+	    problems: msg.Message[];
 	    state: EnvState;
 	
 	    static createFrom(source: any = {}) {
@@ -290,7 +310,7 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.problems = source["problems"];
+	        this.problems = this.convertValues(source["problems"], msg.Message);
 	        this.state = this.convertValues(source["state"], EnvState);
 	    }
 	
@@ -316,7 +336,7 @@ export namespace main {
 	    env: string;
 	    target: string;
 	    status: string;
-	    message: string;
+	    message: msg.Message;
 	
 	    static createFrom(source: any = {}) {
 	        return new TunnelState(source);
@@ -327,7 +347,46 @@ export namespace main {
 	        this.env = source["env"];
 	        this.target = source["target"];
 	        this.status = source["status"];
-	        this.message = source["message"];
+	        this.message = this.convertValues(source["message"], msg.Message);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace msg {
+	
+	export class Message {
+	    code: string;
+	    params?: Record<string, string>;
+	    detail?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Message(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.params = source["params"];
+	        this.detail = source["detail"];
 	    }
 	}
 

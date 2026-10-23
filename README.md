@@ -31,7 +31,7 @@ A barra lateral tem quatro telas, o seletor de ambiente e o log.
 - **Targets**: um card por target do ambiente ativo, com perfil, região, portas e domínios. **Conectar** abre o túnel; se a sessão SSO estiver expirada, o login é feito antes pelo navegador. **Desconectar** encerra o túnel. Fechar o app encerra todos os túneis.
 - **Perfis AWS**: conta, role, região e até quando vale a sessão SSO de cada perfil. **Login SSO** renova a sessão sem abrir túnel.
 - **Ambiente**: edita o ambiente ativo (veja [Ambientes](#ambientes)).
-- **Aparência**: escolhe e edita as paletas de cores (veja [Aparência](#aparência)).
+- **Preferências**: idioma das telas (veja [Idioma](#idioma)) e paletas de cores (veja [Aparência](#aparência)).
 - **Ambiente ativo**, acima do Log: troca de ambiente ou cria um novo.
 - **Log**: mensagens do login, dos túneis e das conversões de arquivos. As que vêm da AWS ficam em inglês.
 
@@ -144,13 +144,19 @@ Cada chave é o nome de um destino de túnel. O nome aceita só letras, números
 | `openUrls` | Não | URLs abertas em abas no Chrome ao conectar. Sem `http(s)://`, usa `https://` |
 | `chromeProfile` | Não | Perfil do Chrome usado pelo target. Se ficar vazio, usa o nome do target. Aceita só letras, números, `.`, `_` e `-` (veja [Perfil do Chrome](#perfil-do-chrome)) |
 
+## Idioma
+
+O app está em **português (Brasil)** e **inglês**. Na primeira abertura, ele usa o idioma do Windows: português se o Windows estiver em português, inglês em qualquer outro. Para trocar, use o seletor **Idioma** na tela **Preferências**; a mudança vale na hora para todas as telas e fica salva no `ssm-helper.json`.
+
+As mensagens que vêm da AWS, como as linhas do Session Manager Plugin no Log e os detalhes de erros do SSO, continuam em inglês, como a AWS as envia.
+
 ## Aparência
 
 A aparência vale para todos os ambientes e fica no `ssm-helper.json`.
 
 O app traz duas paletas padrão, `ssm-dark` e `ssm-light`, que ficam no código e não podem ser editadas nem excluídas. As paletas do `ssm-helper.json` são adicionais. Sem nenhuma escolha, o app usa a `ssm-dark`.
 
-Na tela **Aparência**, o botão de check ao lado de cada paleta a ativa. **Nova paleta** ou **Duplicar e editar** criam uma cópia da paleta selecionada. As cores mudam na hora enquanto você edita e só são gravadas ao **Salvar**.
+Na tela **Preferências**, o botão de check ao lado de cada paleta a ativa. **Nova paleta** ou **Duplicar e editar** criam uma cópia da paleta selecionada. As cores mudam na hora enquanto você edita e só são gravadas ao **Salvar**.
 
 Não há modo claro ou escuro para configurar: a paleta é clara ou escura conforme a sua cor `bgDeep`, que também define o tema da barra de título. Cores que faltarem vêm da `ssm-light` ou da `ssm-dark`, conforme esse fundo.
 
@@ -161,6 +167,7 @@ Guarda as preferências do app, que não pertencem a um ambiente. O app cria e a
 ```json
 {
   "activeEnv": "qa",
+  "language": "pt-BR",
   "hideSensitive": false,
   "openChromeOnConnect": true,
   "appearance": {
@@ -178,6 +185,7 @@ Guarda as preferências do app, que não pertencem a um ambiente. O app cria e a
 | Campo | Descrição |
 |---|---|
 | `activeEnv` | Ambiente selecionado: o `<nome>` de `env.<nome>.json`, ou vazio para `env.json` |
+| `language` | Idioma das telas: `pt-BR` ou `en`. Vazio usa o idioma do Windows |
 | `hideSensitive` | `true` quando o modo de privacidade (olho) está ligado. Padrão: `false` |
 | `openChromeOnConnect` | Chave **Abrir o Chrome ao conectar**, da tela Targets. Padrão: `true` |
 | `appearance.palette` | Paleta ativa: `ssm-dark`, `ssm-light` ou o nome de uma paleta em `palettes` |
@@ -274,7 +282,8 @@ O app é escrito em Go com [Wails v2](https://wails.io) e a interface em React +
 | Pacote | Responsabilidade |
 |---|---|
 | `internal/env` | Leitura, validação e gravação dos ambientes, lista de ambientes e conversão dos arquivos antigos |
-| `internal/settings` | `ssm-helper.json`: ambiente selecionado e aparência (paletas) |
+| `internal/settings` | `ssm-helper.json`: ambiente selecionado, idioma, opções da tela e aparência (paletas) |
+| `internal/msg` | Mensagens para o usuário como códigos (veja [Internacionalização](#internacionalização)) |
 | `internal/jsonfile` | Leitura e gravação de JSON mantendo a ordem das chaves |
 | `internal/sso` | Login SSO (device authorization) e credenciais da role |
 | `internal/tunnel` | Sessão SSM. O [Session Manager Plugin](https://github.com/aws/session-manager-plugin) é compilado dentro do executável, e cada túnel roda como um processo filho do próprio `.exe` (`--ssm-session-plugin`), porque o plugin encerra o processo ao fim da sessão |
@@ -285,7 +294,7 @@ O app é escrito em Go com [Wails v2](https://wails.io) e a interface em React +
 Requisitos: Go 1.25+, Node 20+ e o Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0`).
 
 ```sh
-make test   # go vet, go test e checagem de tipos do frontend
+make test   # go vet, go test, traduções dos códigos e checagem de tipos do frontend
 make build  # gera build/bin/ssm-helper.exe (compila também a partir do Linux/WSL)
 ```
 
@@ -294,3 +303,19 @@ Para rodar o `.exe` usando outra pasta para os ambientes, o `ssm-helper.json` e 
 ```sh
 SSM_HELPER_DIR="$PWD" WSLENV="SSM_HELPER_DIR/p" ./build/bin/ssm-helper.exe
 ```
+
+### Internacionalização
+
+O backend nunca envia texto para o usuário. Tudo o que ele comunica (erros, status dos túneis, linhas do Log, problemas de validação) é um `msg.Message`: um **código** (`TUNNEL_PORT_IN_USE`), **parâmetros** (`{"port": "8443"}`) e, quando houver, um **detalhe** técnico bruto, como o erro da AWS. Os erros dos bindings chegam ao frontend como o JSON dessa mensagem.
+
+O frontend traduz pelos dicionários em `frontend/src/i18n/locales/`:
+
+- `pt-BR.json` e `en.json` têm a mesma estrutura: `ui` com os textos das telas, por tela, e `messages` com um texto para cada código do backend. Parâmetros são escritos como `{nome}`;
+- `useI18n()` dá `t('targets.connect')` para os textos das telas e `tm(message)` para as mensagens do backend; o detalhe técnico é acrescentado ao fim (`texto: detalhe`), a não ser que o texto já o posicione com `{detail}`;
+- um código sem tradução aparece como o próprio código, nunca em branco.
+
+**Nova mensagem do backend:** crie a constante em `internal/msg/codes.go`, use `msg.New`, `msg.Err` ou `msg.Wrap`, e acrescente o texto em `messages` de **todos** os JSON. O `make test` falha se algum código ficar sem tradução.
+
+**Novo texto de tela:** acrescente a chave em `ui` de todos os JSON e use `t('tela.chave')`. Se um dicionário ficar sem a chave, a checagem de tipos falha.
+
+**Novo idioma:** copie o `pt-BR.json` com o código do idioma (por exemplo `es.json`), traduza os textos e registre-o em `frontend/src/i18n/index.tsx` (`Lang`, `dictionaries` e `LANGUAGES`) e em `settings.Languages`, no Go.

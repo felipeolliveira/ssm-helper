@@ -1,5 +1,6 @@
 import {ReactNode} from 'react'
 import {Icon} from './Icon'
+import {useI18n} from '../i18n'
 
 export function MasterDetail({items, selected, onSelect, addLabel, onAdd, onRemove, removeWarning, canRemove, itemAction, render}: {
     items: {name: string, sub: ReactNode}[]
@@ -14,6 +15,7 @@ export function MasterDetail({items, selected, onSelect, addLabel, onAdd, onRemo
     itemAction?: (index: number) => ReactNode
     render: (index: number) => ReactNode
 }) {
+    const {t} = useI18n()
     const current = Math.min(selected, items.length - 1)
     const warning = current >= 0 ? removeWarning?.(current) : ''
     const removable = current >= 0 && (canRemove?.(current) ?? true)
@@ -24,7 +26,7 @@ export function MasterDetail({items, selected, onSelect, addLabel, onAdd, onRemo
                     {items.map((item, i) => (
                         <li key={i} className={i === current ? 'active' : ''}>
                             <button className="master-item" onClick={() => onSelect(i)}>
-                                <span className={item.name ? '' : 'muted'}>{item.name || '(sem nome)'}</span>
+                                <span className={item.name ? '' : 'muted'}>{item.name || t('common.unnamed')}</span>
                                 <span className="muted small">{item.sub}</span>
                             </button>
                             {itemAction?.(i)}
@@ -43,14 +45,14 @@ export function MasterDetail({items, selected, onSelect, addLabel, onAdd, onRemo
                                 <div className="spacer"/>
                                 {removable && (
                                     <button className="btn danger ghost" onClick={() => onRemove(current)}>
-                                        <Icon name="trash"/> Remover
+                                        <Icon name="trash"/> {t('common.remove')}
                                     </button>
                                 )}
                             </footer>
                         )}
                     </>
                 ) : (
-                    <div className="empty">Nada aqui ainda. Use "{addLabel}".</div>
+                    <div className="empty">{t('common.emptyList', {action: addLabel})}</div>
                 )}
             </div>
         </div>

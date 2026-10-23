@@ -54,7 +54,7 @@ export type EnvState = {
     file: string
     path: string
     env: Env | null
-    problems: string[]
+    problems: Message[]
     error: '' | 'notFound' | 'invalidJson' | 'read'
     errorDetail: string
 }
@@ -77,8 +77,18 @@ export type NewEnvRequest = {
     renameCurrentTo: string
 }
 
+// What the backend tells the user: a code translated by the i18n dictionaries
+// ("messages"), its parameters and an optional raw technical detail.
+export type Message = {
+    code: string
+    params?: Record<string, string>
+    detail?: string
+}
+
 // Screen options stored in ssm-helper.json
 export type Preferences = {
+    // 'pt-BR', 'en' or '' (not chosen yet: follow Windows)
+    language: string
     hideSensitive: boolean
     openChromeOnConnect: boolean
 }
@@ -94,7 +104,7 @@ export type TunnelState = {
     env: string
     target: string
     status: TunnelStatus
-    message: string
+    message: Message
 }
 
 export type ProfileStatus = {
@@ -106,7 +116,7 @@ export type ProfileStatus = {
 export type LogEntry = {
     time: string
     source: string
-    text: string
+    message: Message
 }
 
 export type SSOCode = {
@@ -151,7 +161,7 @@ export const api = {
     saveEnv: async (e: Env) => {
         const result = await App.SaveEnv(env.Env.createFrom(e))
         return {
-            problems: (result.problems ?? []) as string[],
+            problems: (result.problems ?? []) as Message[],
             state: normalizeState(result.state),
         }
     },
@@ -169,11 +179,12 @@ export const api = {
             builtins: normalizeAppearance({palettes: state.builtins}).palettes,
         }
     },
-    saveAppearance: async (a: Appearance) => ((await App.SaveAppearance(settings.Appearance.createFrom(a))) ?? []) as string[],
+    saveAppearance: async (a: Appearance) => ((await App.SaveAppearance(settings.Appearance.createFrom(a))) ?? []) as Message[],
     getPreferences: async (): Promise<Preferences> => {
         const p = await App.GetPreferences()
-        return {hideSensitive: !!p.hideSensitive, openChromeOnConnect: !!p.openChromeOnConnect}
+        return {language: p.language ?? '', hideSensitive: !!p.hideSensitive, openChromeOnConnect: !!p.openChromeOnConnect}
     },
+    setLanguage: (lang: string) => App.SetLanguage(lang),
     setHideSensitive: (hide: boolean) => App.SetHideSensitive(hide),
     setOpenChromeOnConnect: (open: boolean) => App.SetOpenChromeOnConnect(open),
     startupMessages: async () => ((await App.StartupMessages()) ?? []) as LogEntry[],
@@ -202,10 +213,22 @@ export const events = {
     onSSOCode: (cb: (c: SSOCode) => void) => EventsOn('sso:code', cb),
 }
 
-export function errorMessage(err: unknown): string {
-    if (typeof err === 'string') return err
-    if (err instanceof Error) return err.message
-    return String(err)
+// Binding errors arrive as the JSON of a Message (internal/msg); anything
+// else becomes UNEXPECTED_ERROR with the text as detail.
+export function toMessage(err: unknown): Message {
+    const text = typeof err === 'string' ? err : err instanceof Error ? err.message : String(err)
+    try {
+        const parsed = JSON.parse(text)
+        if (parsed && typeof parsed.code === 'string') return parsed as Message
+    } catch {
+        // not a Message
+    }
+    return {code: 'UNEXPECTED_ERROR', detail: text}
+}
+
+// Message built in the frontend, for checks done before calling the backend
+export function localMessage(code: string, params?: Record<string, string | number>): Message {
+    return {code, params: params && Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))}
 }
 
 export function emptyProfile(): Profile {

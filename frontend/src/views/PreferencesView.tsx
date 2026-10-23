@@ -1,24 +1,27 @@
 import {useEffect, useMemo, useState} from 'react'
-import {api, Appearance, errorMessage, Palette} from '../api'
+import {api, Appearance, localMessage, Message, Palette, toMessage} from '../api'
 import {Icon} from '../components/Icon'
+import {Field} from '../components/Form'
+import {Lang, LANGUAGES, useI18n} from '../i18n'
 import AppearanceEditor from './AppearanceEditor'
 
-// The appearance is global: it is stored in ssm-helper.json, not in the environments.
-export default function AppearanceView({saved, builtins, onPreview, onSaved}: {
+// Preferences are global: they are stored in ssm-helper.json, not in the environments.
+export default function PreferencesView({saved, builtins, onPreview, onSaved}: {
     saved: Appearance
     builtins: Palette[]
     onPreview: (appearance: Appearance | null) => void
     onSaved: (appearance: Appearance) => void
 }) {
+    const {t, tm, lang, setLang} = useI18n()
     const [draft, setDraft] = useState<Appearance>(saved)
-    const [problems, setProblems] = useState<string[]>([])
+    const [problems, setProblems] = useState<Message[]>([])
     const [saving, setSaving] = useState(false)
-    const [error, setError] = useState('')
+    const [error, setError] = useState<Message | null>(null)
     const [savedNotice, setSavedNotice] = useState(false)
 
     useEffect(() => setDraft(saved), [saved])
 
-    // Edits are previewed live; leaving the screen shows the saved palette again
+    // Palette edits are previewed live; leaving the screen shows the saved palette again
     useEffect(() => onPreview(draft), [draft, onPreview])
     useEffect(() => () => onPreview(null), [onPreview])
 
@@ -28,11 +31,13 @@ export default function AppearanceView({saved, builtins, onPreview, onSaved}: {
         const names = draft.palettes.map(p => p.name.trim())
         const duplicated = names.find((n, i) => names.indexOf(n) !== i)
         if (duplicated !== undefined) {
-            setProblems([duplicated ? `Paleta '${duplicated}' está duplicada` : 'Há uma paleta sem nome'])
+            setProblems([duplicated
+                ? localMessage('LOCAL_PALETTE_DUPLICATE', {name: duplicated})
+                : localMessage('LOCAL_PALETTE_UNNAMED')])
             return
         }
         setSaving(true)
-        setError('')
+        setError(null)
         try {
             const result = await api.saveAppearance(draft)
             setProblems(result)
@@ -41,7 +46,7 @@ export default function AppearanceView({saved, builtins, onPreview, onSaved}: {
                 onSaved(draft)
             }
         } catch (err) {
-            setError(errorMessage(err))
+            setError(toMessage(err))
         } finally {
             setSaving(false)
         }
@@ -51,15 +56,28 @@ export default function AppearanceView({saved, builtins, onPreview, onSaved}: {
         <div className="page">
             <header className="page-header">
                 <div className="spacer">
-                    <h1>Aparência</h1>
-                    <p className="muted">Vale para todos os ambientes. Fica salva no <code>ssm-helper.json</code>, ao lado do programa.</p>
+                    <h1>{t('preferences.title')}</h1>
+                    <p className="muted">{t('preferences.subtitle')}</p>
                 </div>
+            </header>
+
+            {/* Language: applied and saved right away */}
+            <div className="card form-card">
+                <Field label={t('preferences.language')} hint={t('preferences.languageHint')}>
+                    <select value={lang} onChange={e => setLang(e.target.value as Lang)}>
+                        {LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                </Field>
+            </div>
+
+            <header className="page-header">
+                <h2 className="spacer">{t('preferences.appearance')}</h2>
                 <button className="btn" onClick={() => {
                     setDraft(saved)
                     setProblems([])
-                }} disabled={!dirty || saving}>Descartar</button>
+                }} disabled={!dirty || saving}>{t('common.discard')}</button>
                 <button className="btn primary" onClick={save} disabled={!dirty || saving}>
-                    <Icon name="save"/> {saving ? 'Salvando...' : 'Salvar'}
+                    <Icon name="save"/> {saving ? t('common.saving') : t('common.save')}
                 </button>
             </header>
 
@@ -67,13 +85,13 @@ export default function AppearanceView({saved, builtins, onPreview, onSaved}: {
                 <div className="alert warn">
                     <Icon name="alert" size={18}/>
                     <div>
-                        <strong>Corrija antes de salvar:</strong>
-                        <ul>{problems.map(p => <li key={p}><code>{p}</code></li>)}</ul>
+                        <strong>{t('common.fixBeforeSave')}</strong>
+                        <ul>{problems.map((p, i) => <li key={i}><code>{tm(p)}</code></li>)}</ul>
                     </div>
                 </div>
             )}
-            {error && <div className="alert error">{error}</div>}
-            {savedNotice && !dirty && <div className="alert success"><Icon name="check"/> Aparência salva.</div>}
+            {error && <div className="alert error">{tm(error)}</div>}
+            {savedNotice && !dirty && <div className="alert success"><Icon name="check"/> {t('preferences.saved')}</div>}
 
             <AppearanceEditor appearance={draft} builtins={builtins} onChange={a => {
                 setSavedNotice(false)

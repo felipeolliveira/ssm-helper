@@ -11,25 +11,31 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
-// FormatError wraps a parse failure.
-type FormatError struct{ Err error }
-
-func (e *FormatError) Error() string { return e.Err.Error() }
+// IsFormatError reports whether err comes from Parse rejecting the content.
+func IsFormatError(err error) bool {
+	if err == nil {
+		return false
+	}
+	code := msg.From(err).Code
+	return code == msg.JSONInvalid || code == msg.JSONRootNotObject
+}
 
 // Parse returns the root object of a JSON (or YAML) document; an empty document is an empty object.
 func Parse(data []byte) (*yaml.Node, error) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, &FormatError{Err: err}
+		return nil, msg.Wrap(msg.JSONInvalid, err)
 	}
 	if len(doc.Content) == 0 {
 		return &yaml.Node{Kind: yaml.MappingNode}, nil
 	}
 	root := doc.Content[0]
 	if root.Kind != yaml.MappingNode {
-		return nil, &FormatError{Err: errors.New("o conteúdo principal deve ser um objeto { \"chave\": valor }")}
+		return nil, msg.Err(msg.JSONRootNotObject)
 	}
 	return root, nil
 }

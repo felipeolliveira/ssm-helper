@@ -4,8 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
+
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 )
 
 func writeFiles(t *testing.T, dir string, files map[string]string) {
@@ -42,7 +43,7 @@ func TestCreateAndRename(t *testing.T) {
 	if err := Create(dir, "qa", &Env{Title: "QA"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := Create(dir, "qa", &Env{}); err == nil || !strings.Contains(err.Error(), "já existe") {
+	if err := Create(dir, "qa", &Env{}); msg.From(err).Code != msg.EnvNameTaken {
 		t.Errorf("duplicate: %v", err)
 	}
 	for _, bad := range []string{"", "a.b", "a b"} {

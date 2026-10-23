@@ -24,6 +24,7 @@ import (
 	_ "github.com/aws/session-manager-plugin/src/sessionmanagerplugin/session/portsession"
 
 	"github.com/v-felipeolliveira/ssm-helper/internal/env"
+	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
 	"github.com/v-felipeolliveira/ssm-helper/internal/sso"
 )
 
@@ -75,7 +76,7 @@ func Start(ctx context.Context, creds aws.Credentials, p env.Profile, t env.Targ
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("falha ao iniciar a sessão SSM: %w", err)
+		return nil, msg.Wrap(msg.TunnelStartFailed, err)
 	}
 
 	response, err := json.Marshal(map[string]string{
@@ -123,7 +124,7 @@ func Start(ctx context.Context, creds aws.Credentials, p env.Profile, t env.Targ
 	}
 	if err := cmd.Start(); err != nil {
 		s.terminate()
-		return nil, fmt.Errorf("falha ao iniciar o processo do túnel: %w", err)
+		return nil, msg.Wrap(msg.TunnelProcessFailed, err)
 	}
 	attachToJob(cmd)
 
@@ -214,7 +215,7 @@ func pluginEnv(creds aws.Credentials, region, response string) []string {
 func checkPortFree(port string) error {
 	l, err := net.Listen("tcp", "localhost:"+port)
 	if err != nil {
-		return fmt.Errorf("a porta local %s já está em uso: %w", port, errors.Unwrap(err))
+		return msg.Wrap(msg.TunnelPortInUse, errors.Unwrap(err), "port", port)
 	}
 	return l.Close()
 }
