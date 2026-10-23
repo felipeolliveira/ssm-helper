@@ -1,162 +1,268 @@
 # ssm-helper
 
-Script para Windows que abre túneis do **AWS Systems Manager (SSM)** usando login via **AWS SSO (IAM Identity Center)**. Ele roda dentro do WSL (Ubuntu) e tem um menu interativo no terminal.
+Aplicativo para Windows que abre túneis do **AWS Systems Manager (SSM)** usando login via **AWS SSO (IAM Identity Center)**, com interface gráfica.
 
 Com ele você acessa recursos em redes privadas da AWS (load balancers internos, bancos RDS etc.) pela sua máquina local, sem VPN e sem bastion com SSH.
 
+É um único `ssm-helper.exe` portátil: não precisa instalar nada, nem ter AWS CLI, Session Manager Plugin ou WSL. Tudo isso já vem dentro do executável.
+
 ## Pré-requisitos
 
-- Windows 10/11 com **WSL** instalado
-- Uma distribuição **Ubuntu 20.04 ou superior** no WSL
-- Acesso ao AWS SSO, com permissão para as contas e roles configuradas
+- Windows 10/11 com o **WebView2** (já vem no Windows 11 e no Windows 10 atualizado). Se faltar, o app avisa e oferece o download.
+- Google Chrome, para os targets acessados pelo navegador
+- Acesso ao AWS SSO, com permissão para as contas e roles usadas
 
-O script instala sozinho as dependências que faltarem no Ubuntu. Para isso, ele pede a senha do `sudo` do Linux:
-
-- [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-- [Session Manager Plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
-- [yq](https://github.com/mikefarah/yq)
+Não é preciso permissão de administrador, nem para portas locais abaixo de 1024, como a `443`.
 
 ## Instalação
 
-1. Clone o repositório ou baixe os arquivos.
-2. Copie `config.yaml.example` para `config.yaml`, na mesma pasta do `.bat`.
-3. Preencha o `config.yaml` com os dados reais (veja [Configuração](#configuração)).
-4. Dê dois cliques em `ssm-helper.bat`.
+1. Crie uma pasta sua para o app, por exemplo `C:\Users\<você>\Tools\ssm-helper`, e copie o `ssm-helper.exe` para ela.
+2. Abra o `ssm-helper.exe`.
+3. Na primeira vez, a tela **Ambiente** abre sozinha. Cadastre os perfis e os targets e clique em **Salvar**. Se já tiver arquivos de ambiente (`env.json` ou `env.<nome>.json`), coloque-os na mesma pasta do `.exe` antes de abrir.
 
-> O `config.yaml` está no `.gitignore` e **não deve ser versionado**.
+O app guarda na pasta do `.exe` os arquivos de ambiente e o `ssm-helper.json` (preferências), então ela precisa permitir escrita. Para levar o app para outra máquina, copie a pasta inteira. Só o login SSO e os perfis do Chrome ficam fora dela (veja [Dados fora da pasta do app](#dados-fora-da-pasta-do-app)).
 
-## Configuração
+> Os arquivos de ambiente têm dados das suas contas AWS. Eles estão no `.gitignore` e **não devem ser versionados**.
 
-O `config.yaml` tem três seções:
+## Uso
 
-```yaml
-variables:
-  MENU_TITLE: "Ambiente de QA"
+A barra lateral tem quatro telas, o seletor de ambiente e o log.
 
-profiles:
-  qa-admin:
-    AWS_SSO_URL: "https://identitycenter.amazonaws.com/ssoins-0000000000000000"
-    AWS_SSO_REGION: "us-east-1"
-    AWS_SSO_ACCOUNT_ID: "111111111111"
-    AWS_SSO_ROLE_NAME: "NomeDaRole"
+- **Targets**: um card por target do ambiente ativo, com perfil, região, portas e domínios. **Conectar** abre o túnel; se a sessão SSO estiver expirada, o login é feito antes pelo navegador. **Desconectar** encerra o túnel. Fechar o app encerra todos os túneis.
+- **Perfis AWS**: conta, role, região e até quando vale a sessão SSO de cada perfil. **Login SSO** renova a sessão sem abrir túnel.
+- **Ambiente**: edita o ambiente ativo (veja [Ambientes](#ambientes)).
+- **Aparência**: escolhe e edita as paletas de cores (veja [Aparência](#aparência)).
+- **Ambiente ativo**, acima do Log: troca de ambiente ou cria um novo.
+- **Log**: mensagens do login, dos túneis e das conversões de arquivos. As que vêm da AWS ficam em inglês.
 
-targets:
-  qa-web:
-    PROFILE: "qa-admin"
-    SSM_TARGET: "i-0123456789abcdef0"
-    SSM_REGION: "us-east-1"
-    SSM_DOCUMENT: "AWS-StartPortForwardingSessionToRemoteHost"
-    SSM_REMOTE_HOST: "internal-meu-alb-qa-0000000000.us-east-1.elb.amazonaws.com"
-    SSM_REMOTE_PORT: "443"
-    SSM_LOCAL_PORT: "443"
-    DNS_HOSTS: "qa.example.com api.qa.example.com"
-    OPEN_URLS: "qa.example.com"
+### Vários túneis ao mesmo tempo
+
+Cada target conectado ocupa a sua porta local (`localPort`), e só um túnel pode usar cada porta. Para abrir vários ao mesmo tempo, use portas diferentes, por exemplo `8443` para QA e `9443` para produção.
+
+Para quem acessa pelo Chrome que o app abre, a porta não aparece: as URLs continuam `https://dominio`, porque o mapeamento do Chrome já aponta o domínio para a porta certa (veja [Acessar pelo navegador](#acessar-pelo-navegador-com-o-domínio-original)). Ferramentas fora desse Chrome, como curl ou Postman, precisam usar `https://dominio:<porta>`.
+
+### Login SSO
+
+Ao fazer login, o app abre a página do IAM Identity Center no navegador padrão e mostra um código no topo da janela. Confirme na página que o código é o mesmo e autorize. Se o navegador não abrir, use **Abrir página de login** no aviso.
+
+Perfis com a mesma `ssoUrl` compartilham o mesmo login, mesmo em ambientes diferentes. Quando o IAM Identity Center permite, a sessão é renovada sozinha; quando não, o app pede um novo login.
+
+## Ambientes
+
+Um ambiente reúne os perfis AWS e os targets de um contexto, como QA, produção ou um cliente. Cada um é um arquivo `env.<nome>.json` na pasta do `.exe`, por exemplo `env.qa.json` e `env.prod.json`. Se não houver nenhum, o app usa o `env.json`. O nome aceita letras, números, `_` e `-`.
+
+### Trocar e criar ambientes
+
+O seletor **Ambiente ativo**, acima do Log, lista os ambientes pelo nome do arquivo em maiúsculas: `env.cliente-qa.json` aparece como **CLIENTE-QA**, e o `env.json` como **DEFAULT**. Ele também mostra quantos túneis cada um tem abertos. Trocar de ambiente **não fecha os túneis** dos outros: eles continuam ativos e aparecem conectados quando você volta. Dá para usar targets de ambientes diferentes ao mesmo tempo, desde que as portas locais sejam diferentes.
+
+**Novo ambiente** cria um `env.<nome>.json` vazio ou como cópia do ativo. Se o ambiente atual for o `env.json`, o app pede um nome para ele também e o renomeia para `env.<nome>.json`, porque o `env.json` deixa de ser usado quando existe algum `env.<nome>.json`.
+
+O ambiente selecionado fica salvo no `ssm-helper.json`.
+
+### Editar
+
+A tela **Ambiente** tem três abas: **Geral** (título), **Perfis** e **Targets**. O app valida os campos ao salvar e não grava nada se houver problema. A versão anterior do arquivo fica em `<arquivo>.bak`. Ao renomear um perfil, os targets que o usam são atualizados junto.
+
+Se você editar o arquivo à mão, use **Recarregar** para ler de novo. Túneis já abertos continuam com as definições anteriores até serem reconectados.
+
+### Formato
+
+```json
+{
+  "title": "Ambiente de QA",
+  "profiles": {
+    "qa-admin": {
+      "ssoUrl": "https://identitycenter.amazonaws.com/ssoins-0000000000000000",
+      "ssoRegion": "us-east-1",
+      "accountId": "111111111111",
+      "roleName": "NomeDaRole"
+    }
+  },
+  "targets": {
+    "qa-web": {
+      "profile": "qa-admin",
+      "ssmTarget": "i-0123456789abcdef0",
+      "ssmRegion": "us-east-1",
+      "ssmDocument": "AWS-StartPortForwardingSessionToRemoteHost",
+      "remoteHost": "internal-meu-alb-qa-0000000000.us-east-1.elb.amazonaws.com",
+      "remotePort": "443",
+      "localPort": "8443",
+      "dnsHosts": ["qa.example.com", "api.qa.example.com"],
+      "openUrls": ["qa.example.com"],
+      "chromeProfile": ""
+    }
+  }
+}
 ```
 
-### `variables`
+O exemplo completo está em `env.json.example`. A ordem dos perfis e targets no arquivo é a ordem em que aparecem na tela.
+
+#### Raiz
 
 | Campo | Obrigatório | Descrição |
 |---|---|---|
-| `MENU_TITLE` | Sim | Título exibido no menu principal |
+| `title` | Sim | Título exibido na barra lateral |
+| `profiles` | Sim | Perfis AWS, pelo nome |
+| `targets` | Sim | Targets, pelo nome |
 
-### `profiles`
+#### `profiles`
 
 Cada chave é o nome de um perfil AWS. O nome aceita só letras, números, `.`, `_` e `-`.
 
 | Campo | Obrigatório | Descrição |
 |---|---|---|
-| `AWS_SSO_URL` | Sim | URL de início do IAM Identity Center |
-| `AWS_SSO_REGION` | Sim | Região do Identity Center. Também é a região padrão do perfil |
-| `AWS_SSO_ACCOUNT_ID` | Sim | ID da conta AWS (12 dígitos) |
-| `AWS_SSO_ROLE_NAME` | Sim | Nome da role (permission set) no SSO |
+| `ssoUrl` | Sim | URL de início do IAM Identity Center |
+| `ssoRegion` | Sim | Região do Identity Center. Também é a região padrão dos targets do perfil |
+| `accountId` | Sim | ID da conta AWS (12 dígitos) |
+| `roleName` | Sim | Nome da role (permission set) no SSO |
 
-### `targets`
+#### `targets`
 
 Cada chave é o nome de um destino de túnel. O nome aceita só letras, números, `.`, `_` e `-`.
 
 | Campo | Obrigatório | Descrição |
 |---|---|---|
-| `PROFILE` | Sim | Perfil usado para conectar neste target. Deve existir em `profiles` |
-| `SSM_TARGET` | Sim | ID da instância EC2 com o SSM Agent, usada como ponte |
-| `SSM_REGION` | Não | Região da instância. Se ficar vazio, usa a `AWS_SSO_REGION` do perfil do target |
-| `SSM_DOCUMENT` | Sim | Documento SSM, normalmente `AWS-StartPortForwardingSessionToRemoteHost` |
-| `SSM_REMOTE_HOST` | Sim | Host de destino, acessível a partir da instância |
-| `SSM_REMOTE_PORT` | Sim | Porta no host de destino |
-| `SSM_LOCAL_PORT` | Sim | Porta local exposta na sua máquina |
-| `DNS_HOSTS` | Não | Domínios que o Chrome resolve para o túnel, separados por espaço. Aceita curinga, como `*.qa.example.com` (veja [Acessar pelo navegador](#acessar-pelo-navegador-com-o-domínio-original)) |
-| `OPEN_URLS` | Não | URLs abertas em abas no Chrome ao conectar, separadas por espaço. Sem `http(s)://`, usa `https://` |
+| `profile` | Sim | Perfil usado para conectar neste target. Deve existir em `profiles` |
+| `ssmTarget` | Sim | ID da instância EC2 com o SSM Agent, usada como ponte |
+| `ssmRegion` | Não | Região da instância. Se ficar vazio, usa a `ssoRegion` do perfil |
+| `ssmDocument` | Sim | Documento SSM, normalmente `AWS-StartPortForwardingSessionToRemoteHost` |
+| `remoteHost` | Sim | Host de destino, acessível a partir da instância |
+| `remotePort` | Sim | Porta no host de destino |
+| `localPort` | Sim | Porta local exposta na sua máquina |
+| `dnsHosts` | Não | Domínios que o Chrome resolve para o túnel. Aceita curinga, como `*.qa.example.com` (veja [Acessar pelo navegador](#acessar-pelo-navegador-com-o-domínio-original)) |
+| `openUrls` | Não | URLs abertas em abas no Chrome ao conectar. Sem `http(s)://`, usa `https://` |
+| `chromeProfile` | Não | Perfil do Chrome usado pelo target. Se ficar vazio, usa o nome do target. Aceita só letras, números, `.`, `_` e `-` (veja [Perfil do Chrome](#perfil-do-chrome)) |
 
-O script valida o arquivo ao iniciar e lista os campos ausentes ou inválidos, se houver.
+## Aparência
 
-## Uso
+A aparência vale para todos os ambientes e fica no `ssm-helper.json`.
 
-Ao abrir o `.bat`, o menu principal mostra:
+O app traz duas paletas padrão, `ssm-dark` e `ssm-light`, que ficam no código e não podem ser editadas nem excluídas. As paletas do `ssm-helper.json` são adicionais. Sem nenhuma escolha, o app usa a `ssm-dark`.
 
+Na tela **Aparência**, o botão de check ao lado de cada paleta a ativa. **Nova paleta** ou **Duplicar e editar** criam uma cópia da paleta selecionada. As cores mudam na hora enquanto você edita e só são gravadas ao **Salvar**.
+
+Não há modo claro ou escuro para configurar: a paleta é clara ou escura conforme a sua cor `bgDeep`, que também define o tema da barra de título. Cores que faltarem vêm da `ssm-light` ou da `ssm-dark`, conforme esse fundo.
+
+## `ssm-helper.json`
+
+Guarda as preferências do app, que não pertencem a um ambiente. O app cria e atualiza esse arquivo sozinho; editar à mão só é necessário para ajustes que a tela não oferece.
+
+```json
+{
+  "activeEnv": "qa",
+  "appearance": {
+    "palette": "teal",
+    "palettes": {
+      "teal": {
+        "bgDeep": "#07100f",
+        "primary": "#2dd4bf"
+      }
+    }
+  }
+}
 ```
-1) Conectar ao ambiente (Iniciar túnel SSM)
-2) Login SSO / Atualizar sessão AWS
-3) Visualizar perfis AWS
-4) Visualizar targets
-0) Sair
-```
 
-- **Conectar**: você escolhe só o target. O perfil vem do `PROFILE` do target e aparece ao lado do nome:
+| Campo | Descrição |
+|---|---|
+| `activeEnv` | Ambiente selecionado: o `<nome>` de `env.<nome>.json`, ou vazio para `env.json` |
+| `appearance.palette` | Paleta ativa: `ssm-dark`, `ssm-light` ou o nome de uma paleta em `palettes` |
+| `appearance.palettes.<nome>.<cor>` | Cor em `#rgb`, `#rrggbb` ou `#rrggbbaa`. Os nomes `ssm-dark` e `ssm-light` são reservados |
 
-  ```
-       Target      | Perfil
-    1) qa-web      | (qa-admin)
-    2) qa-database | (qa-admin)
-    0) Voltar
-  ```
+Cores usadas pela interface: `bgDeep`, `bgBase`, `bgCard`, `bgElevated`, `border`, `borderStrong`, `textPrimary`, `textSecondary`, `textMuted`, `textFaint`, `primary`, `primary600`, `primarySoft`, `primaryDeep`, `primaryGlow`, `success`, `warning`, `danger` e `info`.
 
-  Se a sessão SSO estiver expirada, o login é renovado automaticamente pelo navegador do Windows. Se o target tiver `DNS_HOSTS` ou `OPEN_URLS`, o script pergunta se deve abrir o Chrome já apontado para o túnel. O túnel fica aberto até você apertar `Ctrl+C`.
-- **Login SSO**: faz o login de um perfil sem abrir túnel.
-- **Visualizar perfis / targets**: mostra o que está no `config.yaml`. Para alterar, edite o arquivo.
-
-### Portas abaixo de 1024
-
-Se `SSM_LOCAL_PORT` for menor que 1024 (por exemplo, `443`), o túnel roda com `sudo` e pode pedir a senha do Linux. Para targets acessados pelo Chrome (veja abaixo), dá para usar uma porta acima de 1024, como `8443`, e evitar o `sudo`. As URLs continuam as mesmas, sem porta.
-
-### Acessar pelo navegador com o domínio original
+## Acessar pelo navegador com o domínio original
 
 As aplicações precisam ser abertas pelo domínio real, e não por `localhost`, por causa do certificado TLS e de CORS. Para isso, o domínio precisa apontar para o túnel local.
 
-Ao conectar em um target que tem `DNS_HOSTS` ou `OPEN_URLS`, o script pergunta se deve abrir o Chrome. Se a resposta for sim, ele espera o túnel ficar pronto e abre uma **instância separada do Chrome**, com uma aba para cada URL de `OPEN_URLS`. Essa instância:
+Em targets com `dnsHosts` ou `openUrls`, o app abre uma **instância separada do Chrome** assim que o túnel fica pronto, com uma aba para cada URL de `openUrls`. Isso pode ser desligado na chave **Abrir o Chrome ao conectar**, na tela Targets; o botão **Abrir Chrome** de cada card abre a janela a qualquer momento enquanto o túnel estiver ativo. Essa instância:
 
-- usa o flag `--host-rules` para mapear cada domínio de `DNS_HOSTS` para `127.0.0.1:<SSM_LOCAL_PORT>`, só dentro dela. Inclua ali também os domínios que a aplicação chama por baixo, como o da API;
-- tem perfil próprio por target (`%LOCALAPPDATA%\ssm-helper\chrome-<target>`), então não fecha nem altera o seu Chrome normal. Na primeira vez, faça login nas aplicações dentro dessa janela.
+- usa o flag `--host-rules` para mapear cada domínio de `dnsHosts` para `127.0.0.1:<localPort>`, só dentro dela. Inclua ali também os domínios que a aplicação chama por baixo, como o da API;
+- tem perfil próprio (`%LOCALAPPDATA%\ssm-helper\chrome-<perfil>`), então não fecha nem altera o seu Chrome normal. Na primeira vez, faça login nas aplicações dentro dessa janela.
 
-Não é preciso permissão de administrador nem mexer no arquivo `hosts` do Windows. Se puder editá-lo, apontar os domínios para `127.0.0.1` em `C:\Windows\System32\drivers\etc\hosts` continua sendo uma alternativa.
+Não é preciso permissão de administrador nem mexer no arquivo `hosts` do Windows. Se puder editá-lo, apontar os domínios para `127.0.0.1` em `C:\Windows\System32\drivers\etc\hosts` continua sendo uma alternativa, mas aí o acesso precisa usar a porta local na URL quando ela não for `443`.
 
-#### Aviso "sinalização de linha de comando não suportada"
+### Perfil do Chrome
+
+O perfil vem do `chromeProfile` do target. Se o campo ficar vazio, cada target tem o próprio perfil, com o nome do target.
+
+Para que vários targets compartilhem login e cookies, use o mesmo `chromeProfile` neles. Mas o Chrome só aplica o `--host-rules` quando abre uma janela nova daquele perfil. Se a janela do perfil já estiver aberta por outro target, as abas novas abrem nela com o mapeamento antigo, e os domínios do segundo target não vão para o túnel. Então só compartilhe o perfil entre targets que você não usa ao mesmo tempo, ou feche a janela antes de conectar no outro.
+
+### Aviso "sinalização de linha de comando não suportada"
 
 Ao abrir, essa janela do Chrome mostra uma barra com o aviso *"Você está usando uma sinalização de linha de comando não suportada: --host-rules=... A estabilidade e a segurança serão afetadas."*. Isso é esperado, e o mapeamento funciona normalmente.
 
 - O Chrome mostra esse aviso para qualquer flag que redirecione tráfego. Tanto `--host-rules` quanto `--host-resolver-rules` estão nessa lista ([bad_flags_prompt.cc](https://chromium.googlesource.com/chromium/src/+/main/chrome/browser/ui/startup/bad_flags_prompt.cc)).
 - O aviso vale só para essa janela separada. O seu Chrome normal não é afetado.
-- Dá para fechar a barra no **X**, mas ela volta sempre que o script abrir a janela.
+- Dá para fechar a barra no **X**, mas ela volta sempre que o app abrir a janela.
 - Desligar o aviso exige a política `CommandLineFlagSecurityWarningsEnabled` no registro do Windows. Isso esconde o aviso para qualquer flag em todo o Chrome e costuma ser bloqueado pela TI em ambientes corporativos, então não é recomendado.
 
-## Como os perfis AWS são tratados
+## Credenciais e dados
 
-Os perfis vêm **apenas** do `config.yaml`. A cada execução, o script:
+### Credenciais AWS
 
-- gera um arquivo dedicado do AWS CLI em `~/.aws/ssm-helper-config`, dentro do WSL;
-- aponta `AWS_CONFIG_FILE` e `AWS_SHARED_CREDENTIALS_FILE` para arquivos próprios;
-- ignora `AWS_PROFILE` e as credenciais definidas em variáveis de ambiente.
+Os perfis vêm **apenas** do ambiente ativo. O app não lê nem altera `~/.aws/config`, `~/.aws/credentials` ou variáveis `AWS_*` do Windows. As credenciais temporárias da role ficam só na memória do app.
 
-Por isso, os perfis do seu `~/.aws/config` e `~/.aws/credentials` não interferem e não são alterados. O cache de login SSO (`~/.aws/sso/cache`) continua compartilhado: perfis com a mesma `AWS_SSO_URL` aproveitam o mesmo login.
+### Dados fora da pasta do app
+
+Ficam em `%LOCALAPPDATA%\ssm-helper`, por usuário do Windows:
+
+- `sso-cache\`: o token do login SSO, um arquivo por `ssoUrl`. Apague a pasta para forçar um novo login;
+- `chrome-<perfil>\`: os perfis do Chrome usados pelos targets, com os logins e cookies das aplicações.
+
+## Atualizar de versões anteriores
+
+Na primeira abertura, o app converte os arquivos das versões anteriores que encontrar na pasta do `.exe`:
+
+| Antes | Agora |
+|---|---|
+| `config.json` e `config.<nome>.json` (chaves como `AWS_SSO_URL`, `DNS_HOSTS`) | `env.json` e `env.<nome>.json` |
+| `config.yaml` e `config.<nome>.yaml` (versão em script, via WSL) | `env.json` e `env.<nome>.json` |
+| `ssm-helper.settings.json` | `ssm-helper.json` |
+| Seção `appearance` dentro do `config.yaml` | `appearance` no `ssm-helper.json` |
+
+A conversão só acontece enquanto não existe nenhum `env*.json` na pasta. Se houver arquivos `config.*.json` e `config.*.yaml`, os JSON são usados, por serem mais recentes. Os arquivos antigos não são apagados, e o Log mostra o que foi convertido. Depois de conferir os ambientes, você pode apagá-los.
 
 ## Solução de problemas
 
 | Sintoma | Causa provável |
 |---|---|
-| "Nenhuma distribuição Ubuntu do WSL foi encontrada" | Instale o Ubuntu com `wsl --install -d Ubuntu` |
-| "Arquivo de configuração não encontrado" | O `config.yaml` não está na mesma pasta do `.bat` |
-| "O arquivo não é um YAML válido" | Use `chave: valor` (dois pontos), não `chave=valor` |
-| "Falha ao verificar acesso AWS (STS)" | Você não tem acesso à role/conta configurada no perfil |
-| O navegador não abre no login SSO | Copie o link exibido no terminal e abra manualmente no Windows |
-| Erro de porta em uso ao conectar | Outro processo usa `SSM_LOCAL_PORT`. Encerre-o ou mude a porta |
-| "Não foi possível abrir o Chrome" | O Chrome não está instalado ou foi bloqueado. Rode no PowerShell o comando exibido no terminal |
-| O Chrome abre, mas não respeita o mapeamento | Já havia uma janela aberta com o mesmo perfil de target. Feche essa janela e conecte de novo |
+| O Windows bloqueia o `.exe` (SmartScreen ou antivírus) | O executável não é assinado. Fale com a TI para liberar o arquivo |
+| Aviso de WebView2 ausente ao abrir | O Windows não tem o WebView2 Runtime. Instale pelo link do aviso ou peça à TI |
+| A tela Ambiente abre sozinha | O ambiente ativo não existe na pasta do `.exe` ou tem campos inválidos. Corrija pela tela e salve |
+| "O arquivo não é um JSON válido" | Falta vírgula, aspas ou chave no arquivo editado à mão. Corrija e use **Recarregar**, ou recomece pela tela |
+| "Não foi possível salvar ssm-helper.json" | A pasta do `.exe` não permite escrita. Mova o app para uma pasta sua |
+| Um ambiente não aparece no seletor | O arquivo precisa se chamar `env.<nome>.json`, com nome de letras, números, `_` ou `-`. O `env.json` só aparece quando não há nenhum `env.<nome>.json` |
+| "Falha ao verificar acesso AWS (STS)" | Você não tem acesso à role ou à conta do perfil |
+| O navegador não abre no login SSO | Use **Abrir página de login** no aviso do topo da janela |
+| "A porta local ... já está em uso" | Outro processo, ou outro target conectado, usa a mesma `localPort`. Encerre-o ou mude a porta (veja [Vários túneis](#vários-túneis-ao-mesmo-tempo)) |
+| "Chrome não encontrado neste computador" | O Chrome não está instalado ou foi bloqueado. O comando usado aparece no Log |
+| O Chrome abre, mas não respeita o mapeamento | Já havia uma janela aberta com o mesmo perfil do Chrome (do mesmo target ou de outro com o mesmo `chromeProfile`). Feche essa janela e conecte de novo |
 | Aviso "sinalização de linha de comando não suportada" no Chrome | Esperado ao usar `--host-rules`. Veja [o aviso](#aviso-sinalização-de-linha-de-comando-não-suportada) |
+
+## Desenvolvimento
+
+O app é escrito em Go com [Wails v2](https://wails.io) e a interface em React + TypeScript (`frontend/`).
+
+| Pacote | Responsabilidade |
+|---|---|
+| `internal/env` | Leitura, validação e gravação dos ambientes, lista de ambientes e conversão dos arquivos antigos |
+| `internal/settings` | `ssm-helper.json`: ambiente selecionado e aparência (paletas) |
+| `internal/jsonfile` | Leitura e gravação de JSON mantendo a ordem das chaves |
+| `internal/sso` | Login SSO (device authorization) e credenciais da role |
+| `internal/tunnel` | Sessão SSM. O [Session Manager Plugin](https://github.com/aws/session-manager-plugin) é compilado dentro do executável, e cada túnel roda como um processo filho do próprio `.exe` (`--ssm-session-plugin`), porque o plugin encerra o processo ao fim da sessão |
+| `internal/chrome` | Abertura do Chrome com `--host-rules` |
+
+`app.go` expõe os bindings usados pelo frontend, e `main.go` configura a janela.
+
+Requisitos: Go 1.25+, Node 20+ e o Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0`).
+
+```sh
+make test   # go vet, go test e checagem de tipos do frontend
+make build  # gera build/bin/ssm-helper.exe (compila também a partir do Linux/WSL)
+```
+
+Para rodar o `.exe` usando outra pasta para os ambientes e o `ssm-helper.json`, defina a variável `SSM_HELPER_DIR`. No WSL, por exemplo:
+
+```sh
+SSM_HELPER_DIR="$PWD" WSLENV="SSM_HELPER_DIR/p" ./build/bin/ssm-helper.exe
+```
