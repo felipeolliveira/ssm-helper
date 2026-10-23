@@ -838,3 +838,29 @@ input:focus, select:focus {
 .privacy-toggle.on { color: var(--primary); background: var(--primary-soft); }
 .secret-input, .secret-input:focus { color: var(--text-muted); background: var(--bg-elevated); box-shadow: none; cursor: not-allowed; }
 .secret-text { filter: blur(5px); user-select: none; }
+
+/* Language picker (Preferences, top right) */
+.language-menu { position: relative; }
+.language-button { gap: 8px; }
+.language-button.open > .icon:last-child { transform: rotate(180deg); }
+
+.language-options {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 20;
+    min-width: 210px;
+    padding: 6px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-md);
+}
+
+.flag {
+    flex-shrink: 0;
+    width: 22px;
+    height: 15px;
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px #0000002e;
+}

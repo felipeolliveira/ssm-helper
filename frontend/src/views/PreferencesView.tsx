@@ -1,8 +1,8 @@
 import {useEffect, useMemo, useState} from 'react'
 import {api, Appearance, localMessage, Message, Palette, toMessage} from '../api'
 import {Icon} from '../components/Icon'
-import {Field} from '../components/Form'
-import {Lang, LANGUAGES, useI18n} from '../i18n'
+import LanguageMenu from '../components/LanguageMenu'
+import {useI18n} from '../i18n'
 import AppearanceEditor from './AppearanceEditor'
 
 // Preferences are global: they are stored in ssm-helper.json, not in the environments.
@@ -12,7 +12,7 @@ export default function PreferencesView({saved, builtins, onPreview, onSaved}: {
     onPreview: (appearance: Appearance | null) => void
     onSaved: (appearance: Appearance) => void
 }) {
-    const {t, tm, lang, setLang} = useI18n()
+    const {t, tm} = useI18n()
     const [draft, setDraft] = useState<Appearance>(saved)
     const [problems, setProblems] = useState<Message[]>([])
     const [saving, setSaving] = useState(false)
@@ -59,16 +59,9 @@ export default function PreferencesView({saved, builtins, onPreview, onSaved}: {
                     <h1>{t('preferences.title')}</h1>
                     <p className="muted">{t('preferences.subtitle')}</p>
                 </div>
+                {/* Applied and saved right away */}
+                <LanguageMenu/>
             </header>
-
-            {/* Language: applied and saved right away */}
-            <div className="card form-card">
-                <Field label={t('preferences.language')} hint={t('preferences.languageHint')}>
-                    <select value={lang} onChange={e => setLang(e.target.value as Lang)}>
-                        {LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                    </select>
-                </Field>
-            </div>
 
             <header className="page-header">
                 <h2 className="spacer">{t('preferences.appearance')}</h2>
