@@ -19,6 +19,9 @@ const (
 	EnvProfileNotFound = "ENV_PROFILE_NOT_FOUND" // path, profile
 	EnvInvalidDomain   = "ENV_INVALID_DOMAIN"    // path, value
 	EnvInvalidURL      = "ENV_INVALID_URL"       // path, value
+	EnvInvalidRegion   = "ENV_INVALID_REGION"    // path, value
+	EnvInvalidPort     = "ENV_INVALID_PORT"      // path, value
+	RegionInvalid      = "REGION_INVALID"        // region
 
 	// Environment files and actions
 	EnvNotFound              = "ENV_NOT_FOUND"               //

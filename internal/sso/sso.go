@@ -96,6 +96,9 @@ func (m *Manager) Login(ctx context.Context, p env.Profile, onCode func(DeviceCo
 	lock.Lock()
 	defer lock.Unlock()
 
+	if err := checkRegion(p.SSORegion); err != nil {
+		return err
+	}
 	client := ssooidc.NewFromConfig(aws.Config{Region: p.SSORegion})
 	cached, _ := m.readCache(p.SSOURL)
 
@@ -203,6 +206,9 @@ func (m *Manager) Credentials(ctx context.Context, p env.Profile) (aws.Credentia
 		return aws.Credentials{}, err
 	}
 
+	if err := checkRegion(p.SSORegion); err != nil {
+		return aws.Credentials{}, err
+	}
 	client := sso.NewFromConfig(aws.Config{Region: p.SSORegion})
 	out, err := client.GetRoleCredentials(ctx, &sso.GetRoleCredentialsInput{
 		AccessToken: aws.String(token.AccessToken),
@@ -264,6 +270,9 @@ func (m *Manager) token(ctx context.Context, p env.Profile) (*cachedToken, error
 		return nil, ErrLoginRequired
 	}
 
+	if checkRegion(cached.Region) != nil {
+		return nil, ErrLoginRequired
+	}
 	client := ssooidc.NewFromConfig(aws.Config{Region: cached.Region})
 	out, err := client.CreateToken(ctx, &ssooidc.CreateTokenInput{
 		ClientId:     aws.String(cached.ClientID),
@@ -337,4 +346,14 @@ func (m *Manager) writeCache(token *cachedToken) error {
 		return err
 	}
 	return os.Rename(tmp, m.cachePath(token.StartURL))
+}
+
+// checkRegion refuses regions that are not AWS region names: the SDK builds the
+// endpoint host from the region, so another value could send the SSO token or
+// signed requests to a host outside AWS.
+func checkRegion(region string) error {
+	if !env.ValidRegion(region) {
+		return msg.Err(msg.RegionInvalid, "region", region)
+	}
+	return nil
 }
