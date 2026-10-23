@@ -1,10 +1,22 @@
 # ssm-helper
 
+**Português** · [English](README.en.md)
+
 Aplicativo para Windows que abre túneis do **AWS Systems Manager (SSM)** usando login via **AWS SSO (IAM Identity Center)**, com interface gráfica.
 
 Com ele você acessa recursos em redes privadas da AWS (load balancers internos, bancos RDS etc.) pela sua máquina local, sem VPN e sem bastion com SSH.
 
 É um único `ssm-helper.exe` portátil: não precisa instalar nada, nem ter AWS CLI, Session Manager Plugin ou WSL. Tudo isso já vem dentro do executável.
+
+## Telas
+
+Prints com o modo de privacidade ligado e os dados de exemplo do `env.json.example`.
+
+| Targets | Perfis AWS |
+|---|---|
+| ![Tela Targets: um card por target, com portas, região e botão Conectar](docs/screenshots/pt-BR/targets.png) | ![Tela Perfis AWS: conta, role, região e sessão SSO de cada perfil](docs/screenshots/pt-BR/profiles.png) |
+| **Ambiente** | **Preferências** |
+| ![Editor do ambiente, na aba Targets](docs/screenshots/pt-BR/environment.png) | ![Preferências com o menu de idioma aberto e o editor de paletas](docs/screenshots/pt-BR/preferences.png) |
 
 ## Pré-requisitos
 
@@ -146,7 +158,7 @@ Cada chave é o nome de um destino de túnel. O nome aceita só letras, números
 
 ## Idioma
 
-O app está em **português (Brasil)** e **inglês**. Na primeira abertura, ele usa o idioma do Windows: português se o Windows estiver em português, inglês em qualquer outro. Para trocar, use o seletor **Idioma** na tela **Preferências**; a mudança vale na hora para todas as telas e fica salva no `ssm-helper.json`.
+O app está em **português (Brasil)** e **inglês**. Na primeira abertura, ele usa o idioma do Windows: português se o Windows estiver em português, inglês em qualquer outro. Para trocar, use o botão com a bandeira no canto superior direito da tela **Preferências**: ele abre a lista de idiomas, e a bandeira do botão troca junto. A mudança vale na hora para todas as telas e fica salva no `ssm-helper.json`.
 
 As mensagens que vêm da AWS, como as linhas do Session Manager Plugin no Log e os detalhes de erros do SSO, continuam em inglês, como a AWS as envia.
 
@@ -318,4 +330,6 @@ O frontend traduz pelos dicionários em `frontend/src/i18n/locales/`:
 
 **Novo texto de tela:** acrescente a chave em `ui` de todos os JSON e use `t('tela.chave')`. Se um dicionário ficar sem a chave, a checagem de tipos falha.
 
-**Novo idioma:** copie o `pt-BR.json` com o código do idioma (por exemplo `es.json`), traduza os textos e registre-o em `frontend/src/i18n/index.tsx` (`Lang`, `dictionaries` e `LANGUAGES`) e em `settings.Languages`, no Go.
+**Novo idioma:** copie o `pt-BR.json` com o código do idioma (por exemplo `es.json`), traduza os textos e registre-o em `frontend/src/i18n/index.tsx` (`Lang`, `dictionaries` e `LANGUAGES`), em `settings.Languages`, no Go, e acrescente a bandeira em `frontend/src/components/flags.tsx` (sem ela, o idioma usa a bandeira `en-US`). As bandeiras são SVG porque o Windows mostra emojis de bandeira só como letras.
+
+**Prints do README:** ficam em `docs/screenshots/<idioma>/`, tirados com o modo de privacidade ligado e os dados do `env.json.example`.

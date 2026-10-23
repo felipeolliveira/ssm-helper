@@ -153,7 +153,6 @@
       "title": "Preferences",
       "subtitle": "They apply to every environment and are saved in ssm-helper.json, next to the program.",
       "language": "Language",
-      "languageHint": "Changes the language of every screen right away.",
       "appearance": "Appearance",
       "saved": "Appearance saved."
     },
