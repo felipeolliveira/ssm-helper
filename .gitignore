@@ -1,1 +1,30 @@
+# Environments and app preferences (local data)
+env.json
+env.*.json
+ssm-helper.json
+ssm-helper-data/
+*.json.bak
+*.json.tmp
+
+# Files from older versions, kept after migration
 config.yaml
+config.*.yaml
+config.yaml.bak
+config.yaml.tmp
+config.json
+config.*.json
+ssm-helper.settings.json
+
+# Build output
+build/bin
+frontend/node_modules
+frontend/dist/*
+!frontend/dist/.gitkeep
+frontend/package.json.md5
+
+# Editors and OS
+*:Zone.Identifier
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

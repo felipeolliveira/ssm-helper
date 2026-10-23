@@ -1,0 +1,17 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "ssm-helper",
+  "outputfilename": "ssm-helper",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Felipe Oliveira"
+  },
+  "info": {
+    "productName": "SSM Helper",
+    "productVersion": "1.0.0",
+    "comments": "Túneis AWS SSM com login SSO"
+  }
+}

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#232831"/>
+      <stop offset="1" stop-color="#14171c"/>
+    </linearGradient>
+    <linearGradient id="arch" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9bb8ff"/>
+      <stop offset="1" stop-color="#4a7bf0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.62" r="0.5">
+      <stop offset="0" stop-color="#5b8cff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#5b8cff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Tile -->
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#glow)"/>
+  <rect x="33.5" y="33.5" width="957" height="957" rx="214.5" fill="none" stroke="#3a4250" stroke-width="3"/>
+
+  <!-- Tunnel: outer and inner arches over the ground line -->
+  <path d="M232 776 V500 a280 280 0 0 1 560 0 V776" fill="none" stroke="url(#arch)" stroke-width="76" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M372 776 V528 a140 140 0 0 1 280 0 V776" fill="none" stroke="#5b8cff" stroke-opacity="0.55" stroke-width="44" stroke-linecap="round"/>
+  <path d="M180 800 H844" stroke="#3a4250" stroke-width="28" stroke-linecap="round"/>
+
+</svg>
