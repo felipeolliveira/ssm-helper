@@ -1,0 +1,6 @@
+# Keep LF in every checkout, including Windows runners with core.autocrlf on:
+# tests compare files such as env.json.example with what the app writes.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
