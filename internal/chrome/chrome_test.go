@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/v-felipeolliveira/ssm-helper/internal/env"
+	"github.com/felipeolliveira/ssm-helper/internal/env"
 )
 
 func TestArgs(t *testing.T) {

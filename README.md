@@ -28,7 +28,7 @@ Não é preciso permissão de administrador, nem para portas locais abaixo de 10
 
 ## Instalação
 
-1. Baixe o `ssm-helper.exe` da [página de Releases](https://github.com/v-felipeolliveira/ssm-helper/releases/latest), crie uma pasta sua para o app, por exemplo `C:\Users\<você>\Tools\ssm-helper`, e coloque o `.exe` nela. Para conferir o download, compare o SHA-256 do arquivo (`Get-FileHash .\ssm-helper.exe`, no PowerShell) com o `SHA256SUMS.txt` da release.
+1. Baixe o `ssm-helper.exe` da [página de Releases](https://github.com/felipeolliveira/ssm-helper/releases/latest), crie uma pasta sua para o app, por exemplo `C:\Users\<você>\Tools\ssm-helper`, e coloque o `.exe` nela. Para conferir o download, compare o SHA-256 do arquivo (`Get-FileHash .\ssm-helper.exe`, no PowerShell) com o `SHA256SUMS.txt` da release.
 2. Abra o `ssm-helper.exe`.
 3. Na primeira vez, a tela **Ambiente** abre sozinha. Cadastre os perfis e os targets e clique em **Salvar**. Se já tiver arquivos de ambiente (`env.json` ou `env.<nome>.json`), coloque-os na mesma pasta do `.exe` antes de abrir.
 

@@ -10,8 +10,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
-	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
+	"github.com/felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/felipeolliveira/ssm-helper/internal/msg"
 )
 
 const (

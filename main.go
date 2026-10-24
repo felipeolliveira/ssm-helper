@@ -10,7 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
-	"github.com/v-felipeolliveira/ssm-helper/internal/tunnel"
+	"github.com/felipeolliveira/ssm-helper/internal/tunnel"
 )
 
 //go:embed all:frontend/dist

@@ -1,4 +1,4 @@
-module github.com/v-felipeolliveira/ssm-helper
+module github.com/felipeolliveira/ssm-helper
 
 go 1.26.0
 

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/v-felipeolliveira/ssm-helper/internal/env"
-	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
+	"github.com/felipeolliveira/ssm-helper/internal/env"
+	"github.com/felipeolliveira/ssm-helper/internal/msg"
 )
 
 func TestStatusUsesCachedToken(t *testing.T) {

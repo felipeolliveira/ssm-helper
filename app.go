@@ -16,13 +16,13 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"github.com/v-felipeolliveira/ssm-helper/internal/chrome"
-	"github.com/v-felipeolliveira/ssm-helper/internal/env"
-	"github.com/v-felipeolliveira/ssm-helper/internal/jsonfile"
-	"github.com/v-felipeolliveira/ssm-helper/internal/msg"
-	"github.com/v-felipeolliveira/ssm-helper/internal/settings"
-	"github.com/v-felipeolliveira/ssm-helper/internal/sso"
-	"github.com/v-felipeolliveira/ssm-helper/internal/tunnel"
+	"github.com/felipeolliveira/ssm-helper/internal/chrome"
+	"github.com/felipeolliveira/ssm-helper/internal/env"
+	"github.com/felipeolliveira/ssm-helper/internal/jsonfile"
+	"github.com/felipeolliveira/ssm-helper/internal/msg"
+	"github.com/felipeolliveira/ssm-helper/internal/settings"
+	"github.com/felipeolliveira/ssm-helper/internal/sso"
+	"github.com/felipeolliveira/ssm-helper/internal/tunnel"
 )
 
 // Tunnel statuses sent to the frontend
