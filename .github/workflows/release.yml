@@ -41,11 +41,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Check out the tag
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.TAG }}
-
+      # Validated before it is used as the checkout ref
       - name: Read the version from the tag
         run: |
           if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -53,6 +49,11 @@ jobs:
             exit 1
           fi
           echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
+      - name: Check out the tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
 
       - uses: actions/setup-go@v7
         with:
@@ -99,9 +100,14 @@ jobs:
           if ($info.ProductVersion -ne $env:VERSION) {
             throw "ProductVersion is '$($info.ProductVersion)', expected '$env:VERSION'"
           }
-          # The embedded Session Manager plugin must answer on its own
-          & $exe --ssm-session-plugin --version
-          if ($LASTEXITCODE -ne 0) { throw "the embedded plugin did not run" }
+          # The embedded Session Manager plugin must answer with its version. The
+          # output is checked instead of the exit code: the .exe is a GUI
+          # (windowsgui) program, and PowerShell leaves $LASTEXITCODE unset for it.
+          $pluginVersion = (& $exe --ssm-session-plugin --version | Out-String).Trim()
+          if ($pluginVersion -notmatch '^\d+(\.\d+){2,3}$') {
+            throw "the embedded plugin did not answer with a version, got '$pluginVersion'"
+          }
+          "Session Manager plugin $pluginVersion"
           "{0} {1}, {2:N1} MB" -f $info.ProductName, $info.ProductVersion, ((Get-Item $exe).Length / 1MB)
 
       - name: Write checksums
