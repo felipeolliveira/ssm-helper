@@ -1,104 +1,104 @@
 # ssm-helper
 
-**Português** · [English](README.en.md)
+**English** · [Português](README.pt-BR.md)
 
-Aplicativo para Windows que abre túneis do **AWS Systems Manager (SSM)** usando login via **AWS SSO (IAM Identity Center)**, com interface gráfica.
+Windows app that opens **AWS Systems Manager (SSM)** tunnels with **AWS SSO (IAM Identity Center)** login, through a graphical interface.
 
-Com ele você acessa recursos em redes privadas da AWS (load balancers internos, bancos RDS etc.) pela sua máquina local, sem VPN e sem bastion com SSH.
+It lets you reach resources in private AWS networks (internal load balancers, RDS databases and so on) from your own machine, without a VPN and without an SSH bastion.
 
-É um único `ssm-helper.exe` portátil: não precisa instalar nada, nem ter AWS CLI, Session Manager Plugin ou WSL. Tudo isso já vem dentro do executável.
+It is a single portable `ssm-helper.exe`: nothing to install, and no AWS CLI, Session Manager Plugin or WSL needed. All of that is built into the executable.
 
-## Telas
+## Screens
 
-Prints com o modo de privacidade ligado e os dados de exemplo do `env.json.example`.
+Screenshots taken with privacy mode on and the sample data from `env.json.example`.
 
-| Targets | Perfis AWS |
+| Targets | AWS profiles |
 |---|---|
-| ![Tela Targets: um card por target, com portas, região e botão Conectar](docs/screenshots/pt-BR/targets.png) | ![Tela Perfis AWS: conta, role, região e sessão SSO de cada perfil](docs/screenshots/pt-BR/profiles.png) |
-| **Ambiente** | **Preferências** |
-| ![Editor do ambiente, na aba Targets](docs/screenshots/pt-BR/environment.png) | ![Preferências com o menu de idioma aberto e o editor de paletas](docs/screenshots/pt-BR/preferences.png) |
+| ![Targets screen: one card per target, with ports, region and the Connect button](docs/screenshots/en/targets.png) | ![AWS profiles screen: account, role, region and SSO session of each profile](docs/screenshots/en/profiles.png) |
+| **Environment** | **Preferences** |
+| ![Environment editor, on the Targets tab](docs/screenshots/en/environment.png) | ![Preferences with the language menu open and the palette editor](docs/screenshots/en/preferences.png) |
 
-## Pré-requisitos
+## Requirements
 
-- Windows 10/11 com o **WebView2** (já vem no Windows 11 e no Windows 10 atualizado). Se faltar, o app avisa e oferece o download.
-- Google Chrome, para os targets acessados pelo navegador
-- Acesso ao AWS SSO, com permissão para as contas e roles usadas
+- Windows 10/11 with **WebView2** (included in Windows 11 and in up-to-date Windows 10). If it is missing, the app says so and offers the download.
+- Google Chrome, for targets accessed through the browser
+- Access to AWS SSO, with permission for the accounts and roles you use
 
-Não é preciso permissão de administrador, nem para portas locais abaixo de 1024, como a `443`.
+No administrator rights are needed, not even for local ports below 1024 such as `443`.
 
-## Instalação
+## Installation
 
-1. Baixe o `ssm-helper.exe` da [página de Releases](https://github.com/felipeolliveira/ssm-helper/releases/latest), crie uma pasta sua para o app, por exemplo `C:\Users\<você>\Tools\ssm-helper`, e coloque o `.exe` nela. Para conferir o download, compare o SHA-256 do arquivo (`Get-FileHash .\ssm-helper.exe`, no PowerShell) com o `SHA256SUMS.txt` da release.
-2. Abra o `ssm-helper.exe`.
-3. Na primeira vez, a tela **Ambiente** abre sozinha. Cadastre os perfis e os targets e clique em **Salvar**. Se já tiver arquivos de ambiente (`env.json` ou `env.<nome>.json`), coloque-os na mesma pasta do `.exe` antes de abrir.
+1. Download `ssm-helper.exe` from the [Releases page](https://github.com/felipeolliveira/ssm-helper/releases/latest), create a folder of your own for the app, for example `C:\Users\<you>\Tools\ssm-helper`, and put the `.exe` in it. To check the download, compare the file's SHA-256 (`Get-FileHash .\ssm-helper.exe`, in PowerShell) with the release's `SHA256SUMS.txt`.
+2. Open `ssm-helper.exe`.
+3. The first time, the **Environment** screen opens by itself. Add the profiles and targets and click **Save**. If you already have environment files (`env.json` or `env.<name>.json`), put them in the same folder as the `.exe` before opening it.
 
-Tudo o que o app usa e grava fica na pasta do `.exe` (veja [O que fica na pasta do app](#o-que-fica-na-pasta-do-app)), então ela precisa permitir escrita. Para levar o app para outra máquina ou outro usuário, copie a pasta inteira: os ambientes, as preferências, o login SSO e os perfis do Chrome vão junto.
+Everything the app uses and writes stays in the `.exe` folder (see [What lives in the app folder](#what-lives-in-the-app-folder)), so that folder must be writable. To take the app to another machine or user, copy the whole folder: environments, preferences, SSO login and Chrome profiles go along.
 
-> Os arquivos de ambiente têm dados das suas contas AWS. Eles estão no `.gitignore` e **não devem ser versionados**.
+> Environment files hold data about your AWS accounts. They are in `.gitignore` and **must not be committed**.
 
-## Uso
+## Usage
 
-A barra lateral tem quatro telas, o seletor de ambiente e o log.
+The sidebar has four screens, the environment selector and the log.
 
-- **Targets**: um card por target do ambiente ativo, com perfil, região, portas e domínios. **Conectar** abre o túnel; se a sessão SSO estiver expirada, o login é feito antes pelo navegador. **Desconectar** encerra o túnel. Fechar o app encerra todos os túneis.
-- **Perfis AWS**: conta, role, região e até quando vale a sessão SSO de cada perfil. **Login SSO** renova a sessão sem abrir túnel.
-- **Ambiente**: edita o ambiente ativo (veja [Ambientes](#ambientes)).
-- **Preferências**: idioma das telas (veja [Idioma](#idioma)) e paletas de cores (veja [Aparência](#aparência)).
-- **Ambiente ativo**, acima do Log: troca de ambiente ou cria um novo.
-- **Log**: mensagens do login, dos túneis e das conversões de arquivos. As que vêm da AWS ficam em inglês.
+- **Targets**: one card per target of the active environment, with profile, region, ports and domains. **Connect** opens the tunnel; if the SSO session has expired, the browser login happens first. **Disconnect** closes the tunnel. Closing the app closes every tunnel.
+- **AWS profiles**: account, role, region and how long the SSO session of each profile is valid. **SSO login** renews the session without opening a tunnel.
+- **Environment**: edits the active environment (see [Environments](#environments)).
+- **Preferences**: screen language (see [Language](#language)) and color palettes (see [Appearance](#appearance)).
+- **Active environment**, above the Log: switches environment or creates a new one.
+- **Log**: messages from the login, the tunnels and file conversions. Those that come from AWS are in English.
 
-### Ocultar dados sensíveis
+### Hiding sensitive data
 
-O botão de olho, ao lado do título na barra lateral, liga o modo de privacidade, útil para compartilhar a tela ou gravar um vídeo:
+The eye button, next to the title in the sidebar, turns on privacy mode, useful when sharing your screen or recording a video:
 
-- hosts remotos, domínios, URLs e o caminho da pasta aparecem como `••••••••`, sempre com o mesmo tamanho, para não revelar o formato nem o comprimento do valor;
-- números de conta aparecem como em banco, só com os 4 últimos dígitos (`••••••••6278`);
-- no editor de ambiente, os campos de conta, URL do SSO, instância, host, domínios e URLs também mostram `••••••••` e ficam só leitura; para editá-los, mostre os dados de novo;
-- o Log, as mensagens de erro e a lista de problemas da configuração ficam borrados, porque podem citar IDs e hosts.
+- remote hosts, domains, URLs and the folder path show as `••••••••`, always the same length, so neither the format nor the length of the value shows;
+- account numbers show like at a bank, with only the last 4 digits (`••••••••6278`);
+- in the environment editor, the account, SSO URL, instance, host, domains and URL fields also show `••••••••` and become read-only; to edit them, show the data again;
+- the Log, error messages and the list of configuration problems are blurred, since they may quote IDs and hosts.
 
-A escolha fica salva no `ssm-helper.json`. Clique de novo no olho para mostrar tudo.
+The choice is saved in `ssm-helper.json`. Click the eye again to show everything.
 
-### Vários túneis ao mesmo tempo
+### Several tunnels at once
 
-Cada target conectado ocupa a sua porta local (`localPort`), e só um túnel pode usar cada porta. Para abrir vários ao mesmo tempo, use portas diferentes, por exemplo `8443` para QA e `9443` para produção.
+Each connected target takes its local port (`localPort`), and only one tunnel can use each port. To open several at once, use different ports, for example `8443` for QA and `9443` for production.
 
-Para quem acessa pelo Chrome que o app abre, a porta não aparece: as URLs continuam `https://dominio`, porque o mapeamento do Chrome já aponta o domínio para a porta certa (veja [Acessar pelo navegador](#acessar-pelo-navegador-com-o-domínio-original)). Ferramentas fora desse Chrome, como curl ou Postman, precisam usar `https://dominio:<porta>`.
+For those who use the Chrome window the app opens, the port does not show: URLs stay `https://domain`, because the Chrome mapping already points the domain to the right port (see [Accessing through the browser](#accessing-through-the-browser-with-the-original-domain)). Tools outside that Chrome window, such as curl or Postman, need `https://domain:<port>`.
 
-### Login SSO
+### SSO login
 
-Ao fazer login, o app abre a página do IAM Identity Center no navegador padrão e mostra um código no topo da janela. Confirme na página que o código é o mesmo e autorize. Se o navegador não abrir, use **Abrir página de login** no aviso.
+On login, the app opens the IAM Identity Center page in the default browser and shows a code at the top of the window. Check that the page shows the same code and authorize it. If the browser does not open, use **Open login page** in the notice.
 
-Perfis com a mesma `ssoUrl` compartilham o mesmo login, mesmo em ambientes diferentes. Quando o IAM Identity Center permite, a sessão é renovada sozinha; quando não, o app pede um novo login.
+Profiles with the same `ssoUrl` share the same login, even across environments. When IAM Identity Center allows it, the session renews by itself; when it does not, the app asks for a new login.
 
-## Ambientes
+## Environments
 
-Um ambiente reúne os perfis AWS e os targets de um contexto, como QA, produção ou um cliente. Cada um é um arquivo `env.<nome>.json` na pasta do `.exe`, por exemplo `env.qa.json` e `env.prod.json`. Se não houver nenhum, o app usa o `env.json`. O nome aceita letras, números, `_` e `-`.
+An environment groups the AWS profiles and targets of one context, such as QA, production or a customer. Each one is an `env.<name>.json` file in the `.exe` folder, for example `env.qa.json` and `env.prod.json`. When there is none, the app uses `env.json`. Names accept letters, numbers, `_` and `-`.
 
-### Trocar e criar ambientes
+### Switching and creating environments
 
-O seletor **Ambiente ativo**, acima do Log, lista os ambientes pelo nome do arquivo em maiúsculas: `env.cliente-qa.json` aparece como **CLIENTE-QA**, e o `env.json` como **DEFAULT**. Ele também mostra quantos túneis cada um tem abertos. Trocar de ambiente **não fecha os túneis** dos outros: eles continuam ativos e aparecem conectados quando você volta. Dá para usar targets de ambientes diferentes ao mesmo tempo, desde que as portas locais sejam diferentes.
+The **Active environment** selector, above the Log, lists the environments by file name in upper case: `env.customer-qa.json` shows as **CUSTOMER-QA**, and `env.json` as **DEFAULT**. It also shows how many tunnels each one has open. Switching environments **does not close the tunnels** of the others: they stay up and show as connected when you come back. You can use targets from different environments at the same time, as long as the local ports differ.
 
-**Novo ambiente** cria um `env.<nome>.json` vazio ou como cópia do ativo. Se o ambiente atual for o `env.json`, o app pede um nome para ele também e o renomeia para `env.<nome>.json`, porque o `env.json` deixa de ser usado quando existe algum `env.<nome>.json`.
+**New environment** creates an empty `env.<name>.json` or a copy of the active one. If the current environment is `env.json`, the app asks for a name for it too and renames it to `env.<name>.json`, because `env.json` is no longer used once any `env.<name>.json` exists.
 
-O ambiente selecionado fica salvo no `ssm-helper.json`.
+The selected environment is saved in `ssm-helper.json`.
 
-### Editar
+### Editing
 
-A tela **Ambiente** tem três abas: **Geral** (título), **Perfis** e **Targets**. O app valida os campos ao salvar e não grava nada se houver problema. A versão anterior do arquivo fica em `<arquivo>.bak`. Ao renomear um perfil, os targets que o usam são atualizados junto.
+The **Environment** screen has three tabs: **General** (title), **Profiles** and **Targets**. The app validates the fields on save and writes nothing if there is a problem. The previous version of the file is kept as `<file>.bak`. Renaming a profile also updates the targets that use it.
 
-Se você editar o arquivo à mão, use **Recarregar** para ler de novo. Túneis já abertos continuam com as definições anteriores até serem reconectados.
+If you edit the file by hand, use **Reload** to read it again. Tunnels already open keep the previous settings until they are reconnected.
 
-### Formato
+### Format
 
 ```json
 {
-  "title": "Ambiente de QA",
+  "title": "QA environment",
   "profiles": {
     "qa-admin": {
       "ssoUrl": "https://identitycenter.amazonaws.com/ssoins-0000000000000000",
       "ssoRegion": "us-east-1",
       "accountId": "111111111111",
-      "roleName": "NomeDaRole"
+      "roleName": "RoleName"
     }
   },
   "targets": {
@@ -107,7 +107,7 @@ Se você editar o arquivo à mão, use **Recarregar** para ler de novo. Túneis 
       "ssmTarget": "i-0123456789abcdef0",
       "ssmRegion": "us-east-1",
       "ssmDocument": "AWS-StartPortForwardingSessionToRemoteHost",
-      "remoteHost": "internal-meu-alb-qa-0000000000.us-east-1.elb.amazonaws.com",
+      "remoteHost": "internal-my-alb-qa-0000000000.us-east-1.elb.amazonaws.com",
       "remotePort": "443",
       "localPort": "8443",
       "dnsHosts": ["qa.example.com", "api.qa.example.com"],
@@ -118,70 +118,70 @@ Se você editar o arquivo à mão, use **Recarregar** para ler de novo. Túneis 
 }
 ```
 
-O exemplo completo está em `env.json.example`. A ordem dos perfis e targets no arquivo é a ordem em que aparecem na tela.
+The full example is in `env.json.example`. The order of profiles and targets in the file is the order they appear on screen.
 
-As regiões precisam ser nomes de região da AWS (`us-east-1`, `sa-east-1`, `us-gov-west-1`) e as portas, números de 1 a 65535. O app recusa outros valores porque eles iriam para os endereços dos serviços da AWS e para o mapeamento do Chrome: uma região como `evil.example.com/x` mandaria o login SSO para outro servidor. Cuidado com arquivos de ambiente recebidos de terceiros.
+Regions must be AWS region names (`us-east-1`, `sa-east-1`, `us-gov-west-1`) and ports numbers from 1 to 65535. The app refuses other values because they would go into the AWS service addresses and the Chrome mapping: a region such as `evil.example.com/x` would send the SSO login to another server. Be careful with environment files received from others.
 
-#### Raiz
+#### Root
 
-| Campo | Obrigatório | Descrição |
+| Field | Required | Description |
 |---|---|---|
-| `title` | Sim | Título exibido na barra lateral |
-| `profiles` | Sim | Perfis AWS, pelo nome |
-| `targets` | Sim | Targets, pelo nome |
+| `title` | Yes | Title shown in the sidebar |
+| `profiles` | Yes | AWS profiles, by name |
+| `targets` | Yes | Targets, by name |
 
 #### `profiles`
 
-Cada chave é o nome de um perfil AWS. O nome aceita só letras, números, `.`, `_` e `-`.
+Each key is the name of an AWS profile. Names accept only letters, numbers, `.`, `_` and `-`.
 
-| Campo | Obrigatório | Descrição |
+| Field | Required | Description |
 |---|---|---|
-| `ssoUrl` | Sim | URL de início do IAM Identity Center |
-| `ssoRegion` | Sim | Região do Identity Center, como `us-east-1`. Também é a região padrão dos targets do perfil |
-| `accountId` | Sim | ID da conta AWS (12 dígitos) |
-| `roleName` | Sim | Nome da role (permission set) no SSO |
+| `ssoUrl` | Yes | IAM Identity Center start URL |
+| `ssoRegion` | Yes | Identity Center region, such as `us-east-1`. Also the default region of the profile's targets |
+| `accountId` | Yes | AWS account ID (12 digits) |
+| `roleName` | Yes | Role (permission set) name in SSO |
 
 #### `targets`
 
-Cada chave é o nome de um destino de túnel. O nome aceita só letras, números, `.`, `_` e `-`.
+Each key is the name of a tunnel destination. Names accept only letters, numbers, `.`, `_` and `-`.
 
-| Campo | Obrigatório | Descrição |
+| Field | Required | Description |
 |---|---|---|
-| `profile` | Sim | Perfil usado para conectar neste target. Deve existir em `profiles` |
-| `ssmTarget` | Sim | ID da instância EC2 com o SSM Agent, usada como ponte |
-| `ssmRegion` | Não | Região da instância, como `us-east-1`. Se ficar vazio, usa a `ssoRegion` do perfil |
-| `ssmDocument` | Sim | Documento SSM, normalmente `AWS-StartPortForwardingSessionToRemoteHost` |
-| `remoteHost` | Sim | Host de destino, acessível a partir da instância |
-| `remotePort` | Sim | Porta no host de destino, de 1 a 65535 |
-| `localPort` | Sim | Porta local exposta na sua máquina, de 1 a 65535 |
-| `dnsHosts` | Não | Domínios que o Chrome resolve para o túnel. Aceita curinga, como `*.qa.example.com` (veja [Acessar pelo navegador](#acessar-pelo-navegador-com-o-domínio-original)) |
-| `openUrls` | Não | URLs abertas em abas no Chrome ao conectar. Sem `http(s)://`, usa `https://` |
-| `chromeProfile` | Não | Perfil do Chrome usado pelo target. Se ficar vazio, usa o nome do target. Aceita só letras, números, `.`, `_` e `-` (veja [Perfil do Chrome](#perfil-do-chrome)) |
+| `profile` | Yes | Profile used to connect to this target. Must exist in `profiles` |
+| `ssmTarget` | Yes | ID of the EC2 instance with the SSM Agent, used as the bridge |
+| `ssmRegion` | No | Instance region, such as `us-east-1`. When empty, the profile's `ssoRegion` is used |
+| `ssmDocument` | Yes | SSM document, usually `AWS-StartPortForwardingSessionToRemoteHost` |
+| `remoteHost` | Yes | Destination host, reachable from the instance |
+| `remotePort` | Yes | Port on the destination host, from 1 to 65535 |
+| `localPort` | Yes | Local port exposed on your machine, from 1 to 65535 |
+| `dnsHosts` | No | Domains Chrome resolves to the tunnel. Wildcards work, like `*.qa.example.com` (see [Accessing through the browser](#accessing-through-the-browser-with-the-original-domain)) |
+| `openUrls` | No | URLs opened in Chrome tabs on connect. Without `http(s)://`, `https://` is used |
+| `chromeProfile` | No | Chrome profile used by the target. When empty, the target name is used. Accepts only letters, numbers, `.`, `_` and `-` (see [Chrome profile](#chrome-profile)) |
 
-## Idioma
+## Language
 
-O app está em **português (Brasil)** e **inglês**. Na primeira abertura, ele usa o idioma do Windows: português se o Windows estiver em português, inglês em qualquer outro. Para trocar, use o botão com a bandeira no canto superior direito da tela **Preferências**: ele abre a lista de idiomas, e a bandeira do botão troca junto. A mudança vale na hora para todas as telas e fica salva no `ssm-helper.json`.
+The app is available in **Portuguese (Brazil)** and **English**. On first run it follows the Windows language: Portuguese when Windows is in Portuguese, English for any other language. To change it, use the flag button in the top right corner of the **Preferences** screen: it opens the list of languages, and the flag on the button changes with the choice. The change applies to every screen right away and is saved in `ssm-helper.json`.
 
-As mensagens que vêm da AWS, como as linhas do Session Manager Plugin no Log e os detalhes de erros do SSO, continuam em inglês, como a AWS as envia.
+Messages that come from AWS, such as the Session Manager Plugin lines in the Log and the details of SSO errors, stay in English, as AWS sends them.
 
-## Aparência
+## Appearance
 
-A aparência vale para todos os ambientes e fica no `ssm-helper.json`.
+The appearance applies to every environment and is stored in `ssm-helper.json`.
 
-O app traz duas paletas padrão, `ssm-dark` e `ssm-light`, que ficam no código e não podem ser editadas nem excluídas. As paletas do `ssm-helper.json` são adicionais. Sem nenhuma escolha, o app usa a `ssm-dark`.
+The app ships two built-in palettes, `ssm-dark` and `ssm-light`, which live in the code and cannot be edited or deleted. Palettes in `ssm-helper.json` are added to them. Without any choice, the app uses `ssm-dark`.
 
-Na tela **Preferências**, o botão de check ao lado de cada paleta a ativa. **Nova paleta** ou **Duplicar e editar** criam uma cópia da paleta selecionada. As cores mudam na hora enquanto você edita e só são gravadas ao **Salvar**.
+On the **Preferences** screen, the check button next to each palette makes it active. **New palette** or **Duplicate and edit** create a copy of the selected palette. Colors change on screen as you edit and are only stored on **Save**.
 
-Não há modo claro ou escuro para configurar: a paleta é clara ou escura conforme a sua cor `bgDeep`, que também define o tema da barra de título. Cores que faltarem vêm da `ssm-light` ou da `ssm-dark`, conforme esse fundo.
+There is no light or dark mode to configure: a palette is light or dark according to its `bgDeep` color, which also sets the title bar theme. Missing colors come from `ssm-light` or `ssm-dark`, based on that background.
 
 ## `ssm-helper.json`
 
-Guarda as preferências do app, que não pertencem a um ambiente. O app cria e atualiza esse arquivo sozinho; editar à mão só é necessário para ajustes que a tela não oferece.
+Holds the app preferences, which do not belong to an environment. The app creates and updates this file by itself; editing it by hand is only needed for adjustments the screens do not offer.
 
 ```json
 {
   "activeEnv": "qa",
-  "language": "pt-BR",
+  "language": "en",
   "hideSensitive": false,
   "openChromeOnConnect": true,
   "appearance": {
@@ -196,123 +196,123 @@ Guarda as preferências do app, que não pertencem a um ambiente. O app cria e a
 }
 ```
 
-| Campo | Descrição |
+| Field | Description |
 |---|---|
-| `activeEnv` | Ambiente selecionado: o `<nome>` de `env.<nome>.json`, ou vazio para `env.json` |
-| `language` | Idioma das telas: `pt-BR` ou `en`. Vazio usa o idioma do Windows |
-| `hideSensitive` | `true` quando o modo de privacidade (olho) está ligado. Padrão: `false` |
-| `openChromeOnConnect` | Chave **Abrir o Chrome ao conectar**, da tela Targets. Padrão: `true` |
-| `appearance.palette` | Paleta ativa: `ssm-dark`, `ssm-light` ou o nome de uma paleta em `palettes` |
-| `appearance.palettes.<nome>.<cor>` | Cor em `#rgb`, `#rrggbb` ou `#rrggbbaa`. Os nomes `ssm-dark` e `ssm-light` são reservados |
+| `activeEnv` | Selected environment: the `<name>` of `env.<name>.json`, or empty for `env.json` |
+| `language` | Screen language: `pt-BR` or `en`. Empty follows the Windows language |
+| `hideSensitive` | `true` when privacy mode (eye) is on. Default: `false` |
+| `openChromeOnConnect` | The **Open Chrome on connect** switch on the Targets screen. Default: `true` |
+| `appearance.palette` | Active palette: `ssm-dark`, `ssm-light` or the name of a palette in `palettes` |
+| `appearance.palettes.<name>.<color>` | Color as `#rgb`, `#rrggbb` or `#rrggbbaa`. The names `ssm-dark` and `ssm-light` are reserved |
 
-Cores usadas pela interface: `bgDeep`, `bgBase`, `bgCard`, `bgElevated`, `border`, `borderStrong`, `textPrimary`, `textSecondary`, `textMuted`, `textFaint`, `primary`, `primary600`, `primarySoft`, `primaryDeep`, `primaryGlow`, `success`, `warning`, `danger` e `info`.
+Colors used by the interface: `bgDeep`, `bgBase`, `bgCard`, `bgElevated`, `border`, `borderStrong`, `textPrimary`, `textSecondary`, `textMuted`, `textFaint`, `primary`, `primary600`, `primarySoft`, `primaryDeep`, `primaryGlow`, `success`, `warning`, `danger` and `info`.
 
-## Acessar pelo navegador com o domínio original
+## Accessing through the browser with the original domain
 
-As aplicações precisam ser abertas pelo domínio real, e não por `localhost`, por causa do certificado TLS e de CORS. Para isso, o domínio precisa apontar para o túnel local.
+Applications must be opened by their real domain, not `localhost`, because of the TLS certificate and CORS. For that, the domain has to point to the local tunnel.
 
-Em targets com `dnsHosts` ou `openUrls`, o app abre uma **instância separada do Chrome** assim que o túnel fica pronto, com uma aba para cada URL de `openUrls`. Isso pode ser desligado na chave **Abrir o Chrome ao conectar**, na tela Targets; o botão **Abrir Chrome** de cada card abre a janela a qualquer momento enquanto o túnel estiver ativo. Essa instância:
+For targets with `dnsHosts` or `openUrls`, the app opens a **separate Chrome instance** as soon as the tunnel is ready, with one tab per URL in `openUrls`. This can be turned off with the **Open Chrome on connect** switch on the Targets screen; the **Open Chrome** button on each card opens the window at any time while the tunnel is up. That instance:
 
-- usa o flag `--host-rules` para mapear cada domínio de `dnsHosts` para `127.0.0.1:<localPort>`, só dentro dela. Inclua ali também os domínios que a aplicação chama por baixo, como o da API;
-- tem perfil próprio (`ssm-helper-data\chrome-<perfil>`, na pasta do app), então não fecha nem altera o seu Chrome normal. Na primeira vez, faça login nas aplicações dentro dessa janela.
+- uses the `--host-rules` flag to map each `dnsHosts` domain to `127.0.0.1:<localPort>`, only inside it. Also include the domains the application calls behind the scenes, such as the API;
+- has its own profile (`ssm-helper-data\chrome-<profile>`, in the app folder), so it does not close or change your regular Chrome. The first time, sign in to the applications inside that window.
 
-Não é preciso permissão de administrador nem mexer no arquivo `hosts` do Windows. Se puder editá-lo, apontar os domínios para `127.0.0.1` em `C:\Windows\System32\drivers\etc\hosts` continua sendo uma alternativa, mas aí o acesso precisa usar a porta local na URL quando ela não for `443`.
+No administrator rights or changes to the Windows `hosts` file are needed. If you can edit it, pointing the domains to `127.0.0.1` in `C:\Windows\System32\drivers\etc\hosts` is still an alternative, but then the URL needs the local port when it is not `443`.
 
-### Perfil do Chrome
+### Chrome profile
 
-O perfil vem do `chromeProfile` do target. Se o campo ficar vazio, cada target tem o próprio perfil, com o nome do target.
+The profile comes from the target's `chromeProfile`. When the field is empty, each target has its own profile, named after the target.
 
-Para que vários targets compartilhem login e cookies, use o mesmo `chromeProfile` neles. Mas o Chrome só aplica o `--host-rules` quando abre uma janela nova daquele perfil. Se a janela do perfil já estiver aberta por outro target, as abas novas abrem nela com o mapeamento antigo, e os domínios do segundo target não vão para o túnel. Então só compartilhe o perfil entre targets que você não usa ao mesmo tempo, ou feche a janela antes de conectar no outro.
+To let several targets share logins and cookies, give them the same `chromeProfile`. Chrome, however, only applies `--host-rules` when it opens a new window for that profile. If the profile window is already open for another target, new tabs open in it with the old mapping, and the second target's domains do not go through the tunnel. So only share a profile between targets you do not use at the same time, or close the window before connecting to the other one.
 
-### Aviso "sinalização de linha de comando não suportada"
+### "Unsupported command-line flag" warning
 
-Ao abrir, essa janela do Chrome mostra uma barra com o aviso *"Você está usando uma sinalização de linha de comando não suportada: --host-rules=... A estabilidade e a segurança serão afetadas."*. Isso é esperado, e o mapeamento funciona normalmente.
+When it opens, that Chrome window shows a bar saying *"You are using an unsupported command-line flag: --host-rules=... Stability and security will suffer."*. This is expected, and the mapping works normally.
 
-- O Chrome mostra esse aviso para qualquer flag que redirecione tráfego. Tanto `--host-rules` quanto `--host-resolver-rules` estão nessa lista ([bad_flags_prompt.cc](https://chromium.googlesource.com/chromium/src/+/main/chrome/browser/ui/startup/bad_flags_prompt.cc)).
-- O aviso vale só para essa janela separada. O seu Chrome normal não é afetado.
-- Dá para fechar a barra no **X**, mas ela volta sempre que o app abrir a janela.
-- Desligar o aviso exige a política `CommandLineFlagSecurityWarningsEnabled` no registro do Windows. Isso esconde o aviso para qualquer flag em todo o Chrome e costuma ser bloqueado pela TI em ambientes corporativos, então não é recomendado.
+- Chrome shows this warning for any flag that redirects traffic. Both `--host-rules` and `--host-resolver-rules` are on that list ([bad_flags_prompt.cc](https://chromium.googlesource.com/chromium/src/+/main/chrome/browser/ui/startup/bad_flags_prompt.cc)).
+- The warning only applies to that separate window. Your regular Chrome is not affected.
+- You can close the bar with the **X**, but it comes back whenever the app opens the window.
+- Turning the warning off requires the `CommandLineFlagSecurityWarningsEnabled` policy in the Windows registry. That hides the warning for every flag in all of Chrome and is usually blocked by IT in corporate environments, so it is not recommended.
 
-## Credenciais e dados
+## Credentials and data
 
-### Credenciais AWS
+### AWS credentials
 
-Os perfis vêm **apenas** do ambiente ativo. O app não lê nem altera `~/.aws/config`, `~/.aws/credentials` ou variáveis `AWS_*` do Windows. As credenciais temporárias da role ficam só na memória do app.
+Profiles come **only** from the active environment. The app does not read or change `~/.aws/config`, `~/.aws/credentials` or Windows `AWS_*` variables. Temporary role credentials only live in the app's memory.
 
-### O que fica na pasta do app
+### What lives in the app folder
 
 ```
 ssm-helper\
   ssm-helper.exe
-  env.json, env.<nome>.json   ambientes
-  ssm-helper.json             preferências: ambiente ativo, olho, Chrome ao conectar, aparência
+  env.json, env.<name>.json   environments
+  ssm-helper.json             preferences: active environment, language, eye, Chrome on connect, appearance
   ssm-helper-data\
-    sso-cache\                token do login SSO, um arquivo por ssoUrl
-    chrome-<perfil>\          perfis do Chrome dos targets, com logins e cookies das aplicações
-    webview\                  dados internos da janela do app (WebView2)
+    sso-cache\                SSO login token, one file per ssoUrl
+    chrome-<profile>\         Chrome profiles of the targets, with application logins and cookies
+    webview\                  internal data of the app window (WebView2)
 ```
 
-Os dados do app ficam só nessa pasta, nada em `%APPDATA%` ou `%LOCALAPPDATA%`. O Chrome instalado e o próprio Windows mantêm os registros deles, como em qualquer programa.
+The app's data lives only in this folder, nothing in `%APPDATA%` or `%LOCALAPPDATA%`. The installed Chrome and Windows itself keep their own records, as with any program.
 
-O `ssm-helper-data` tem o token do SSO e os cookies das aplicações. Por isso, ao abrir, o app restringe essa pasta ao seu usuário do Windows (e ao SYSTEM), sem herdar as permissões da pasta onde o app está: outras contas da máquina não conseguem lê-la, mesmo que a pasta do app seja compartilhada. Se não for possível aplicar essa restrição (por exemplo, num pendrive FAT32 ou numa pasta de rede), o Log avisa. Mesmo assim, trate a pasta do app como dado pessoal: não a envie a ninguém, já que copiar a pasta leva junto o login. Para começar do zero, apague o `ssm-helper-data` (o app pede um novo login SSO e os perfis do Chrome começam vazios); para só forçar um novo login, apague o `ssm-helper-data\sso-cache`.
+`ssm-helper-data` holds the SSO token and the application cookies. That is why, on startup, the app restricts that folder to your Windows user (and SYSTEM), without inheriting the permissions of the folder the app is in: other accounts on the machine cannot read it, even if the app folder is shared. When that restriction cannot be applied (for example on a FAT32 USB drive or a network folder), the Log says so. Even so, treat the app folder as personal data: do not send it to anyone, since copying the folder takes the login along. To start from scratch, delete `ssm-helper-data` (the app asks for a new SSO login and the Chrome profiles start empty); to only force a new login, delete `ssm-helper-data\sso-cache`.
 
-## Atualizar de versões anteriores
+## Upgrading from earlier versions
 
-Na primeira abertura, o app converte os arquivos das versões anteriores que encontrar na pasta do `.exe`:
+On first run, the app converts the files from earlier versions it finds in the `.exe` folder:
 
-| Antes | Agora |
+| Before | Now |
 |---|---|
-| `config.json` e `config.<nome>.json` (chaves como `AWS_SSO_URL`, `DNS_HOSTS`) | `env.json` e `env.<nome>.json` |
-| `config.yaml` e `config.<nome>.yaml` (versão em script, via WSL) | `env.json` e `env.<nome>.json` |
+| `config.json` and `config.<name>.json` (keys such as `AWS_SSO_URL`, `DNS_HOSTS`) | `env.json` and `env.<name>.json` |
+| `config.yaml` and `config.<name>.yaml` (script version, through WSL) | `env.json` and `env.<name>.json` |
 | `ssm-helper.settings.json` | `ssm-helper.json` |
-| Seção `appearance` dentro do `config.yaml` | `appearance` no `ssm-helper.json` |
-| `%LOCALAPPDATA%\ssm-helper` (login SSO e perfis do Chrome) | `ssm-helper-data\`, na pasta do app, começando vazio |
+| `appearance` section inside `config.yaml` | `appearance` in `ssm-helper.json` |
+| `%LOCALAPPDATA%\ssm-helper` (SSO login and Chrome profiles) | `ssm-helper-data\`, in the app folder, starting empty |
 
-A pasta `%LOCALAPPDATA%\ssm-helper` não é trazida: se fosse, qualquer cópia nova do app levaria o login e os perfis do Chrome das outras. Na primeira abertura, faça login SSO de novo e, nos targets acessados pelo Chrome, entre nas aplicações outra vez; o Log avisa que a pasta antiga pode ser apagada. As preferências antigas do olho e do Chrome ao conectar, que ficavam dentro da janela do app, não são trazidas: ajuste de novo na tela, se precisar. A pasta `%APPDATA%\ssm-helper.exe`, das versões anteriores, pode ser apagada.
+`%LOCALAPPDATA%\ssm-helper` is not brought over: if it were, any new copy of the app would take the login and Chrome profiles from the others. On first run, sign in to SSO again and, for targets accessed through Chrome, sign in to the applications again; the Log says the old folder can be deleted. The old eye and Chrome-on-connect preferences, which lived inside the app window, are not brought over either: set them again on screen if needed. The `%APPDATA%\ssm-helper.exe` folder from earlier versions can be deleted.
 
-A conversão dos ambientes só acontece enquanto não existe nenhum `env*.json` na pasta. Se houver arquivos `config.*.json` e `config.*.yaml`, os JSON são usados, por serem mais recentes. Os arquivos antigos não são apagados, e o Log mostra o que foi convertido. Depois de conferir os ambientes, você pode apagá-los.
+Environments are only converted while there is no `env*.json` in the folder. When there are both `config.*.json` and `config.*.yaml` files, the JSON ones are used, since they are newer. Old files are not deleted, and the Log shows what was converted. After checking the environments, you can delete them.
 
-## Solução de problemas
+## Troubleshooting
 
-| Sintoma | Causa provável |
+| Symptom | Likely cause |
 |---|---|
-| O Windows bloqueia o `.exe` (SmartScreen ou antivírus) | O executável não é assinado. Fale com a TI para liberar o arquivo |
-| Aviso de WebView2 ausente ao abrir | O Windows não tem o WebView2 Runtime. Instale pelo link do aviso ou peça à TI |
-| A tela Ambiente abre sozinha | O ambiente ativo não existe na pasta do `.exe` ou tem campos inválidos. Corrija pela tela e salve |
-| "O arquivo não é um JSON válido" | Falta vírgula, aspas ou chave no arquivo editado à mão. Corrija e use **Recarregar**, ou recomece pela tela |
-| "Não foi possível salvar ssm-helper.json" | A pasta do `.exe` não permite escrita. Mova o app para uma pasta sua |
-| Um ambiente não aparece no seletor | O arquivo precisa se chamar `env.<nome>.json`, com nome de letras, números, `_` ou `-`. O `env.json` só aparece quando não há nenhum `env.<nome>.json` |
-| "Falha ao verificar acesso AWS (STS)" | Você não tem acesso à role ou à conta do perfil |
-| O navegador não abre no login SSO | Use **Abrir página de login** no aviso do topo da janela |
-| "A porta local ... já está em uso" | Outro processo, ou outro target conectado, usa a mesma `localPort`. Encerre-o ou mude a porta (veja [Vários túneis](#vários-túneis-ao-mesmo-tempo)) |
-| "Chrome não encontrado neste computador" | O Chrome não está instalado ou foi bloqueado. O comando usado aparece no Log |
-| O Chrome abre, mas não respeita o mapeamento | Já havia uma janela aberta com o mesmo perfil do Chrome (do mesmo target ou de outro com o mesmo `chromeProfile`). Feche essa janela e conecte de novo |
-| Aviso "sinalização de linha de comando não suportada" no Chrome | Esperado ao usar `--host-rules`. Veja [o aviso](#aviso-sinalização-de-linha-de-comando-não-suportada) |
+| Windows blocks the `.exe` (SmartScreen or antivirus) | The executable is not signed. Ask IT to allow the file |
+| WebView2 missing warning on startup | Windows does not have the WebView2 Runtime. Install it from the link in the warning or ask IT |
+| The Environment screen opens by itself | The active environment does not exist in the `.exe` folder or has invalid fields. Fix it on screen and save |
+| "The file is not valid JSON" | A comma, quote or brace is missing in a hand-edited file. Fix it and use **Reload**, or start over on screen |
+| "Could not save ssm-helper.json" | The `.exe` folder is not writable. Move the app to a folder of your own |
+| An environment does not show in the selector | The file must be named `env.<name>.json`, with a name of letters, numbers, `_` or `-`. `env.json` only shows when there is no `env.<name>.json` |
+| "Could not verify AWS access (STS)" | You do not have access to the profile's role or account |
+| The browser does not open on SSO login | Use **Open login page** in the notice at the top of the window |
+| "Local port ... is already in use" | Another process, or another connected target, uses the same `localPort`. Stop it or change the port (see [Several tunnels](#several-tunnels-at-once)) |
+| "Chrome was not found on this computer" | Chrome is not installed or was blocked. The command used shows in the Log |
+| Chrome opens but ignores the mapping | A window with the same Chrome profile was already open (same target, or another with the same `chromeProfile`). Close that window and connect again |
+| "Unsupported command-line flag" warning in Chrome | Expected with `--host-rules`. See [the warning](#unsupported-command-line-flag-warning) |
 
-## Desenvolvimento
+## Development
 
-O app é escrito em Go com [Wails v2](https://wails.io) e a interface em React + TypeScript (`frontend/`).
+The app is written in Go with [Wails v2](https://wails.io), and the interface in React + TypeScript (`frontend/`).
 
-| Pacote | Responsabilidade |
+| Package | Responsibility |
 |---|---|
-| `internal/env` | Leitura, validação e gravação dos ambientes, lista de ambientes e conversão dos arquivos antigos |
-| `internal/settings` | `ssm-helper.json`: ambiente selecionado, idioma, opções da tela e aparência (paletas) |
-| `internal/msg` | Mensagens para o usuário como códigos (veja [Internacionalização](#internacionalização)) |
-| `internal/jsonfile` | Leitura e gravação de JSON mantendo a ordem das chaves |
-| `internal/sso` | Login SSO (device authorization) e credenciais da role |
-| `internal/tunnel` | Sessão SSM. O [Session Manager Plugin](https://github.com/aws/session-manager-plugin) é compilado dentro do executável, e cada túnel roda como um processo filho do próprio `.exe` (`--ssm-session-plugin`), porque o plugin encerra o processo ao fim da sessão |
-| `internal/chrome` | Abertura do Chrome com `--host-rules` |
+| `internal/env` | Reading, validating and writing environments, listing them and converting old files |
+| `internal/settings` | `ssm-helper.json`: selected environment, language, screen options and appearance (palettes) |
+| `internal/msg` | Messages to the user as codes (see [Internationalization](#internationalization)) |
+| `internal/jsonfile` | Reading and writing JSON while keeping key order |
+| `internal/sso` | SSO login (device authorization) and role credentials |
+| `internal/tunnel` | SSM session. The [Session Manager Plugin](https://github.com/aws/session-manager-plugin) is compiled into the executable, and each tunnel runs as a child process of the `.exe` itself (`--ssm-session-plugin`), because the plugin exits the process when the session ends |
+| `internal/chrome` | Opening Chrome with `--host-rules` |
 
-`app.go` expõe os bindings usados pelo frontend, e `main.go` configura a janela.
+`app.go` exposes the bindings used by the frontend, and `main.go` sets up the window.
 
-Requisitos: Go 1.25+, Node 20+ e o Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0`).
+Requirements: Go 1.25+, Node 20+ and the Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0`).
 
 ```sh
-make test   # go vet, go test, traduções dos códigos e checagem de tipos do frontend
-make build  # gera build/bin/ssm-helper.exe (compila também a partir do Linux/WSL)
+make test   # go vet, go test, message translations and frontend type checking
+make build  # builds build/bin/ssm-helper.exe (also builds from Linux/WSL)
 ```
 
-Para rodar o `.exe` usando outra pasta para os ambientes, o `ssm-helper.json` e o `ssm-helper-data`, defina a variável `SSM_HELPER_DIR`. No WSL, por exemplo:
+To run the `.exe` with another folder for the environments, `ssm-helper.json` and `ssm-helper-data`, set the `SSM_HELPER_DIR` variable. In WSL, for example:
 
 ```sh
 SSM_HELPER_DIR="$PWD" WSLENV="SSM_HELPER_DIR/p" ./build/bin/ssm-helper.exe
@@ -320,29 +320,29 @@ SSM_HELPER_DIR="$PWD" WSLENV="SSM_HELPER_DIR/p" ./build/bin/ssm-helper.exe
 
 ### Releases
 
-O workflow `.github/workflows/release.yml` compila e publica o `.exe`:
+The `.github/workflows/release.yml` workflow builds and publishes the `.exe`:
 
-1. Crie uma release com uma tag no formato `vX.Y.Z`, pela página de Releases do GitHub ou com `gh release create v1.2.0 --title v1.2.0 --notes "..."`.
-2. Ao publicar a release, o workflow roda num Windows do GitHub, faz os mesmos testes do `make test`, compila e anexa à release o `ssm-helper.exe` e o `SHA256SUMS.txt`.
+1. Create a release with a tag shaped like `vX.Y.Z`, on the GitHub Releases page or with `gh release create v1.2.0 --title v1.2.0 --notes "..."`.
+2. When the release is published, the workflow runs on a GitHub Windows machine, runs the same checks as `make test`, builds and attaches `ssm-helper.exe` and `SHA256SUMS.txt` to the release.
 
-A versão nas propriedades do `.exe` vem da tag (`v1.2.0` vira `1.2.0`), então não é preciso mudar o `wails.json` a cada versão. O workflow também pode ser rodado à mão (**Actions → Release → Run workflow**) para uma tag existente: o build fica como artefato da execução e, com **upload** marcado, substitui os arquivos da release.
+The version in the `.exe` properties comes from the tag (`v1.2.0` becomes `1.2.0`), so `wails.json` does not need to change for each version. The workflow can also be run by hand (**Actions → Release → Run workflow**) for an existing tag: the build is kept as a run artifact and, with **upload** checked, replaces the release files.
 
-Por enquanto só há build para Windows.
+For now there is only a Windows build.
 
-### Internacionalização
+### Internationalization
 
-O backend nunca envia texto para o usuário. Tudo o que ele comunica (erros, status dos túneis, linhas do Log, problemas de validação) é um `msg.Message`: um **código** (`TUNNEL_PORT_IN_USE`), **parâmetros** (`{"port": "8443"}`) e, quando houver, um **detalhe** técnico bruto, como o erro da AWS. Os erros dos bindings chegam ao frontend como o JSON dessa mensagem.
+The backend never sends text to the user. Everything it communicates (errors, tunnel states, Log lines, validation problems) is an `msg.Message`: a **code** (`TUNNEL_PORT_IN_USE`), **parameters** (`{"port": "8443"}`) and, when there is one, a raw technical **detail** such as the AWS error. Binding errors reach the frontend as that message's JSON.
 
-O frontend traduz pelos dicionários em `frontend/src/i18n/locales/`:
+The frontend translates with the dictionaries in `frontend/src/i18n/locales/`:
 
-- `pt-BR.json` e `en.json` têm a mesma estrutura: `ui` com os textos das telas, por tela, e `messages` com um texto para cada código do backend. Parâmetros são escritos como `{nome}`;
-- `useI18n()` dá `t('targets.connect')` para os textos das telas e `tm(message)` para as mensagens do backend; o detalhe técnico é acrescentado ao fim (`texto: detalhe`), a não ser que o texto já o posicione com `{detail}`;
-- um código sem tradução aparece como o próprio código, nunca em branco.
+- `pt-BR.json` and `en.json` share the same structure: `ui` with the screen texts, by screen, and `messages` with one text per backend code. Parameters are written as `{name}`;
+- `useI18n()` provides `t('targets.connect')` for screen texts and `tm(message)` for backend messages; the technical detail is appended at the end (`text: detail`), unless the text places it with `{detail}`;
+- a code without a translation shows as the code itself, never blank.
 
-**Nova mensagem do backend:** crie a constante em `internal/msg/codes.go`, use `msg.New`, `msg.Err` ou `msg.Wrap`, e acrescente o texto em `messages` de **todos** os JSON. O `make test` falha se algum código ficar sem tradução.
+**New backend message:** add the constant to `internal/msg/codes.go`, use `msg.New`, `msg.Err` or `msg.Wrap`, and add the text to `messages` in **every** JSON. `make test` fails when a code has no translation.
 
-**Novo texto de tela:** acrescente a chave em `ui` de todos os JSON e use `t('tela.chave')`. Se um dicionário ficar sem a chave, a checagem de tipos falha.
+**New screen text:** add the key to `ui` in every JSON and use `t('screen.key')`. If a dictionary misses the key, type checking fails.
 
-**Novo idioma:** copie o `pt-BR.json` com o código do idioma (por exemplo `es.json`), traduza os textos e registre-o em `frontend/src/i18n/index.tsx` (`Lang`, `dictionaries` e `LANGUAGES`), em `settings.Languages`, no Go, e acrescente a bandeira em `frontend/src/components/Flags.tsx` (sem ela, o idioma usa a bandeira `en-US`). As bandeiras são SVG porque o Windows mostra emojis de bandeira só como letras.
+**New language:** copy `pt-BR.json` under the language code (for example `es.json`), translate the texts and register it in `frontend/src/i18n/index.tsx` (`Lang`, `dictionaries` and `LANGUAGES`), in `settings.Languages` in Go, and add its flag to `frontend/src/components/Flags.tsx` (without one, the language gets the `en-US` flag). Flags are SVG because Windows shows flag emojis only as letters.
 
-**Prints do README:** ficam em `docs/screenshots/<idioma>/`, tirados com o modo de privacidade ligado e os dados do `env.json.example`.
+**README screenshots:** they live in `docs/screenshots/<language>/`, taken with privacy mode on and the data from `env.json.example`.
