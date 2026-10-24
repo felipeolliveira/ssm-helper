@@ -33,9 +33,11 @@ func TestSaveRoundTrip(t *testing.T) {
 	if backup, _ := os.ReadFile(path + ".bak"); string(backup) != "old" {
 		t.Errorf("backup = %q", backup)
 	}
-	// The saved file matches the example, which documents the format
+	// The saved file matches the example, which documents the format. Line
+	// endings are ignored: a Windows checkout may turn the example into CRLF.
 	example, _ := os.ReadFile(filepath.Join("..", "..", "env.json.example"))
-	if data, _ := os.ReadFile(path); strings.TrimSpace(string(data)) != strings.TrimSpace(string(example)) {
+	normalize := func(b []byte) string { return strings.TrimSpace(strings.ReplaceAll(string(b), "\r\n", "\n")) }
+	if data, _ := os.ReadFile(path); normalize(data) != normalize(example) {
 		t.Errorf("saved file differs from env.json.example:\n%s", data)
 	}
 }
