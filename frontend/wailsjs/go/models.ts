@@ -94,6 +94,48 @@ export namespace env {
 
 export namespace main {
 	
+	export class AboutInfo {
+	    name: string;
+	    version: string;
+	    description: string;
+	    copyright: string;
+	    commit: string;
+	    commitTime: string;
+	    modified: boolean;
+	    buildType: string;
+	    platform: string;
+	    goVersion: string;
+	    wailsVersion: string;
+	    pluginVersion: string;
+	    repository: string;
+	    appDir: string;
+	    dataDir: string;
+	    logDir: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AboutInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.description = source["description"];
+	        this.copyright = source["copyright"];
+	        this.commit = source["commit"];
+	        this.commitTime = source["commitTime"];
+	        this.modified = source["modified"];
+	        this.buildType = source["buildType"];
+	        this.platform = source["platform"];
+	        this.goVersion = source["goVersion"];
+	        this.wailsVersion = source["wailsVersion"];
+	        this.pluginVersion = source["pluginVersion"];
+	        this.repository = source["repository"];
+	        this.appDir = source["appDir"];
+	        this.dataDir = source["dataDir"];
+	        this.logDir = source["logDir"];
+	    }
+	}
 	export class AppearanceState {
 	    appearance: settings.Appearance;
 	    builtins: settings.Palette[];

@@ -864,3 +864,11 @@ input:focus, select:focus {
     border-radius: 3px;
     box-shadow: 0 0 0 1px #0000002e;
 }
+
+/* About */
+.about-hero { gap: 16px; }
+.about-mark { width: 56px; height: 56px; flex-shrink: 0; border-radius: var(--radius-lg); }
+.about-version { margin-left: 6px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
+.about-card { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
+.about-card .page-header { margin: 0; }
+.about-card dd code { overflow-wrap: anywhere; }

@@ -5,6 +5,8 @@ import {settings} from '../models';
 import {msg} from '../models';
 import {env} from '../models';
 
+export function About():Promise<main.AboutInfo>;
+
 export function CancelLogin(arg1:string):Promise<void>;
 
 export function Connect(arg1:string,arg2:boolean):Promise<void>;
@@ -28,6 +30,8 @@ export function OpenAppFolder():Promise<void>;
 export function OpenChrome(arg1:string):Promise<void>;
 
 export function OpenLogFolder():Promise<void>;
+
+export function OpenURL(arg1:string):Promise<void>;
 
 export function ProfileStatuses():Promise<Array<main.ProfileStatus>>;
 

@@ -93,6 +93,29 @@ export type Preferences = {
     openChromeOnConnect: boolean
 }
 
+// Version of the program and of what it is built with (About screen)
+export type AboutInfo = {
+    name: string
+    version: string
+    description: string
+    copyright: string
+    // Git revision; '' when the build did not record it
+    commit: string
+    commitTime: string
+    // The build had uncommitted changes
+    modified: boolean
+    // 'production', 'dev' or 'debug'
+    buildType: string
+    platform: string
+    goVersion: string
+    wailsVersion: string
+    pluginVersion: string
+    repository: string
+    appDir: string
+    dataDir: string
+    logDir: string
+}
+
 export type AppearanceState = {
     appearance: Appearance
     builtins: Palette[]
@@ -173,6 +196,8 @@ export const api = {
     createEnv: async (req: NewEnvRequest) => normalizeState(await App.CreateEnv(main.NewEnvRequest.createFrom(req))),
     openAppFolder: () => App.OpenAppFolder(),
     openLogFolder: () => App.OpenLogFolder(),
+    about: async (): Promise<AboutInfo> => ({...(await App.About())}),
+    openURL: (url: string) => App.OpenURL(url),
     getAppearance: async (): Promise<AppearanceState> => {
         const state = await App.GetAppearance()
         return {
