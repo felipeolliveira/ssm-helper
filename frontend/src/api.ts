@@ -172,6 +172,7 @@ export const api = {
     selectEnv: async (name: string) => normalizeState(await App.SelectEnv(name)),
     createEnv: async (req: NewEnvRequest) => normalizeState(await App.CreateEnv(main.NewEnvRequest.createFrom(req))),
     openAppFolder: () => App.OpenAppFolder(),
+    openLogFolder: () => App.OpenLogFolder(),
     getAppearance: async (): Promise<AppearanceState> => {
         const state = await App.GetAppearance()
         return {

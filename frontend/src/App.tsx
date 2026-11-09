@@ -235,7 +235,17 @@ export default function App() {
                         />
                     )}
                 </div>
-                <LogPanel open={logOpen} logs={logs} onClose={() => setLogOpen(false)} onClear={() => setLogs([])}/>
+                <LogPanel
+                    open={logOpen}
+                    logs={logs}
+                    onClose={() => setLogOpen(false)}
+                    onClear={() => setLogs([])}
+                    onOpenFolder={() => api.openLogFolder().catch(err => addLogs([{
+                        time: new Date().toLocaleTimeString('en-GB'),
+                        source: 'log',
+                        message: toMessage(err),
+                    }]))}
+                />
             </main>
 
             {newEnvOpen && envList && (

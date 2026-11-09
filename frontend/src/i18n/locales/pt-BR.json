@@ -200,6 +200,8 @@
       "title": "Log",
       "subtitle": "Mensagens do login SSO e dos túneis (em inglês quando vêm da AWS)",
       "clear": "Limpar",
+      "openFolder": "Abrir pasta",
+      "openFolderHint": "Abre ssm-helper-data/logs, com um arquivo por dia",
       "empty": "Nenhuma mensagem ainda."
     },
     "sso": {
@@ -294,6 +296,8 @@
     "DATA_DIR_CREATE_FAILED": "Não foi possível criar {dir}",
     "DATA_DIR_NOT_PROTECTED": "Não foi possível restringir {dir} ao seu usuário. Ela guarda o login SSO e os cookies do Chrome: mantenha o app numa pasta só sua",
     "DATA_LEGACY_DIR_UNUSED": "A pasta {legacy}, de versões anteriores, não é mais usada: o login SSO e os perfis do Chrome agora ficam em {dir}. Faça login de novo quando for pedido e apague a pasta antiga.",
+    "LOG_FILE_WRITE_FAILED": "Não foi possível gravar o arquivo de log em {dir}. O painel continua funcionando, mas as mensagens não estão sendo salvas",
+    "LOG_DIR_OPEN_FAILED": "Não foi possível abrir a pasta de logs {dir}",
 
     "LOCAL_PROFILE_UNNAMED": "O perfil nº {index} está sem nome",
     "LOCAL_PROFILE_DUPLICATE": "O perfil '{name}' está duplicado",

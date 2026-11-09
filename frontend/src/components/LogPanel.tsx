@@ -4,11 +4,12 @@ import {Icon} from './Icon'
 import {useSecretText} from '../privacy'
 import {useI18n} from '../i18n'
 
-export default function LogPanel({open, logs, onClose, onClear}: {
+export default function LogPanel({open, logs, onClose, onClear, onOpenFolder}: {
     open: boolean
     logs: LogEntry[]
     onClose: () => void
     onClear: () => void
+    onOpenFolder: () => void
 }) {
     const {t, tm} = useI18n()
     const endRef = useRef<HTMLDivElement>(null)
@@ -26,6 +27,9 @@ export default function LogPanel({open, logs, onClose, onClear}: {
                 <strong>{t('log.title')}</strong>
                 <span className="muted">{t('log.subtitle')}</span>
                 <div className="spacer"/>
+                <button className="btn ghost" onClick={onOpenFolder} title={t('log.openFolderHint')}>
+                    <Icon name="folder"/> {t('log.openFolder')}
+                </button>
                 <button className="btn ghost" onClick={onClear} disabled={logs.length === 0}>{t('log.clear')}</button>
                 <button className="btn ghost icon-only" onClick={onClose} title={t('common.close')}><Icon name="x"/></button>
             </header>
