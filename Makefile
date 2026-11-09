@@ -4,8 +4,14 @@
 
 .PHONY: build test dev
 
+# Shown on the About screen (see about.go)
+COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
+COMMIT_TIME := $(shell git log -1 --format=%cI 2>/dev/null)
+COMMIT_MODIFIED := $(shell git status --porcelain 2>/dev/null | grep -q . && echo true)
+
 build:
-	wails build -platform windows/amd64 -trimpath -ldflags "-s -w"
+	wails build -platform windows/amd64 -trimpath \
+		-ldflags "-s -w -X main.commit=$(COMMIT) -X main.commitTime=$(COMMIT_TIME) -X main.commitModified=$(COMMIT_MODIFIED)"
 
 test:
 	go vet ./...
