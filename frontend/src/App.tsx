@@ -19,6 +19,7 @@ import TargetsView from './views/TargetsView'
 import ProfilesView from './views/ProfilesView'
 import EnvView from './views/EnvView'
 import PreferencesView from './views/PreferencesView'
+import AboutView from './views/AboutView'
 import LogPanel from './components/LogPanel'
 import SSOBanner from './components/SSOBanner'
 import EnvSwitcher from './components/EnvSwitcher'
@@ -27,7 +28,7 @@ import {Icon, IconName} from './components/Icon'
 import {usePrivacy} from './privacy'
 import {useI18n} from './i18n'
 
-type View = 'targets' | 'profiles' | 'env' | 'preferences'
+type View = 'targets' | 'profiles' | 'env' | 'preferences' | 'about'
 
 const MAX_LOGS = 500
 
@@ -155,6 +156,7 @@ export default function App() {
         {id: 'profiles', label: t('nav.profiles'), icon: 'user', disabled: !envUsable},
         {id: 'env', label: t('nav.env'), icon: 'settings'},
         {id: 'preferences', label: t('nav.preferences'), icon: 'palette', disabled: !appearanceState},
+        {id: 'about', label: t('nav.about'), icon: 'info'},
     ]
 
     return (
@@ -205,7 +207,9 @@ export default function App() {
                 <SSOBanner codes={Object.values(ssoCodes)} onCancel={profile => api.cancelLogin(profile)}/>
                 {loadError && <div className="alert error">{tm(loadError)}</div>}
                 <div className="content">
-                    {view === 'preferences' && appearanceState ? (
+                    {view === 'about' ? (
+                        <AboutView/>
+                    ) : view === 'preferences' && appearanceState ? (
                         <PreferencesView
                             saved={appearanceState.appearance}
                             builtins={appearanceState.builtins}

@@ -38,14 +38,15 @@ Everything the app uses and writes stays in the `.exe` folder (see [What lives i
 
 ## Usage
 
-The sidebar has four screens, the environment selector and the log.
+The sidebar has five screens, the environment selector and the log.
 
 - **Targets**: one card per target of the active environment, with profile, region, ports and domains. **Connect** opens the tunnel; if the SSO session has expired, the browser login happens first. **Disconnect** closes the tunnel. Closing the app closes every tunnel. If a tunnel drops by itself (SSM idle timeout, network or VPN change, the computer sleeping), the app reconnects it with growing waits, up to 10 attempts in a row; when the SSO session has expired, it stops and asks you to connect again.
 - **AWS profiles**: account, role, region and how long the SSO session of each profile is valid. **SSO login** renews the session without opening a tunnel.
 - **Environment**: edits the active environment (see [Environments](#environments)).
 - **Preferences**: screen language (see [Language](#language)) and color palettes (see [Appearance](#appearance)).
+- **About**: app version, build (type, commit and date), platform, the versions of the embedded Session Manager Plugin, Wails and Go, and the app, data and log folders. **Copy details** copies this as text, to paste in a bug report; **Releases** opens the releases page.
 - **Active environment**, above the Log: switches environment or creates a new one.
-- **Log**: messages from the login, the tunnels and file conversions. Those that come from AWS are in English.
+- **Log**: messages from the login, the tunnels, reconnections and file conversions. Those that come from AWS are in English, and the Session Manager Plugin's own warnings and errors show as `[plugin WARN]` and `[plugin ERROR]` lines. Everything is also written to one file per day in `ssm-helper-data\logs`, kept after the app closes; **Open folder** in the Log panel opens that folder.
 
 ### Hiding sensitive data
 
@@ -289,6 +290,9 @@ Environments are only converted while there is no `env*.json` in the folder. Whe
 | "Chrome was not found on this computer" | Chrome is not installed or was blocked. The command used shows in the Log |
 | Chrome opens but ignores the mapping | A window with the same Chrome profile was already open (same target, or another with the same `chromeProfile`). Close that window and connect again |
 | "Unsupported command-line flag" warning in Chrome | Expected with `--host-rules`. See [the warning](#unsupported-command-line-flag-warning) |
+| "Could not reconnect the tunnel after 10 attempts" | The network or VPN stayed down while the app retried. Connect again when it is back; the Log and the files in `ssm-helper-data\logs` show each attempt |
+| "The tunnel dropped and the SSO session has expired" | The app does not open the browser by itself during a reconnection. Click **Connect** to sign in again |
+| Reporting a problem | Use **Copy details** on the **About** screen to send the version and build, and attach the day's file from `ssm-helper-data\logs` (with privacy in mind: it may quote hosts and account IDs) |
 
 ## Development
 
@@ -303,10 +307,11 @@ The app is written in Go with [Wails v2](https://wails.io), and the interface in
 | `internal/sso` | SSO login (device authorization) and role credentials |
 | `internal/tunnel` | SSM session. The [Session Manager Plugin](https://github.com/aws/session-manager-plugin) is compiled into the executable, and each tunnel runs as a child process of the `.exe` itself (`--ssm-session-plugin`), because the plugin exits the process when the session ends |
 | `internal/chrome` | Opening Chrome with `--host-rules` |
+| `internal/applog` | Daily log files (`ssm-helper-data\logs\ssm-helper-YYYY-MM-DD.log`), with each message's code, parameters and detail, since texts are only translated in the frontend |
 
-`app.go` exposes the bindings used by the frontend, and `main.go` sets up the window.
+`app.go` exposes the bindings used by the frontend, `about.go` the data of the About screen, and `main.go` sets up the window.
 
-Requirements: Go 1.25+, Node 20+ and the Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0`).
+Requirements: Go 1.26+, Node 20+ and the Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0`).
 
 ```sh
 make test   # go vet, go test, message translations and frontend type checking
@@ -326,7 +331,7 @@ The `.github/workflows/release.yml` workflow builds and publishes the `.exe`:
 1. Create a release with a tag shaped like `vX.Y.Z`, on the GitHub Releases page or with `gh release create v1.2.0 --title v1.2.0 --notes "..."`.
 2. When the release is published, the workflow runs on a GitHub Windows machine, runs the same checks as `make test`, builds and attaches `ssm-helper.exe` and `SHA256SUMS.txt` to the release.
 
-The version in the `.exe` properties comes from the tag (`v1.2.0` becomes `1.2.0`), so `wails.json` does not need to change for each version. The workflow can also be run by hand (**Actions → Release → Run workflow**) for an existing tag: the build is kept as a run artifact and, with **upload** checked, replaces the release files.
+The version in the `.exe` properties comes from the tag (`v1.2.0` becomes `1.2.0`), so `wails.json` does not need to change for each version. `wails.json` is embedded in the executable, so the **About** screen shows the same version; local builds show the version in the file (`1.0.0`), and the commit tells them apart. The workflow can also be run by hand (**Actions → Release → Run workflow**) for an existing tag: the build is kept as a run artifact and, with **upload** checked, replaces the release files.
 
 For now there is only a Windows build.
 

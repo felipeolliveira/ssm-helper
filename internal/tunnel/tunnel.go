@@ -22,13 +22,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	pluginlog "github.com/aws/session-manager-plugin/src/log"
 	"github.com/aws/session-manager-plugin/src/sessionmanagerplugin/session"
-	"github.com/cihub/seelog"
 	_ "github.com/aws/session-manager-plugin/src/sessionmanagerplugin/session/portsession"
+	"github.com/aws/session-manager-plugin/src/version"
+	"github.com/cihub/seelog"
 
 	"github.com/felipeolliveira/ssm-helper/internal/env"
 	"github.com/felipeolliveira/ssm-helper/internal/msg"
 	"github.com/felipeolliveira/ssm-helper/internal/sso"
 )
+
+// PluginVersion is the version of the Session Manager plugin compiled in.
+const PluginVersion = version.Version
 
 // PluginArg is the first argument that makes the executable run as the plugin.
 const PluginArg = "--ssm-session-plugin"

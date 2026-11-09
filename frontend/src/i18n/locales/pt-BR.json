@@ -26,6 +26,7 @@
       "profiles": "Perfis AWS",
       "env": "Ambiente",
       "preferences": "Preferências",
+      "about": "Sobre",
       "log": "Log"
     },
     "sidebar": {
@@ -155,6 +156,29 @@
       "language": "Idioma",
       "appearance": "Aparência",
       "saved": "Aparência salva."
+    },
+    "about": {
+      "loading": "Carregando...",
+      "copy": "Copiar detalhes",
+      "copied": "Copiado",
+      "releases": "Versões",
+      "build": "Build",
+      "version": "Versão",
+      "buildType": "Tipo de build",
+      "commit": "Commit",
+      "commitDate": "Data do commit",
+      "modified": "(com alterações não commitadas)",
+      "platform": "Plataforma",
+      "components": "Componentes",
+      "plugin": "Plugin do Session Manager",
+      "wails": "Wails",
+      "go": "Go",
+      "folders": "Pastas",
+      "appDir": "Programa e ambientes",
+      "dataDir": "Dados (cache SSO, perfis do Chrome)",
+      "logDir": "Arquivos de log",
+      "openAppFolder": "Abrir pasta do programa",
+      "unknown": "desconhecido"
     },
     "palette": {
       "new": "Nova paleta",
