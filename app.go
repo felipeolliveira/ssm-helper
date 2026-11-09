@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -555,8 +556,33 @@ func (a *App) OpenChrome(targetName string) error {
 	return a.openChrome(t)
 }
 
+// Reconnection of a tunnel that drops by itself (SSM idle timeout, network
+// change, laptop sleep): a new SSM session with fresh credentials, after a
+// growing delay. The count of failures starts again once a tunnel stays up
+// for reconnectStableAfter.
+const (
+	reconnectMaxFailures = 10
+	reconnectStableAfter = time.Minute
+)
+
+var reconnectDelays = []time.Duration{
+	2 * time.Second, 5 * time.Second, 10 * time.Second, 20 * time.Second, 30 * time.Second, time.Minute,
+}
+
+func reconnectDelay(failure int) time.Duration {
+	return reconnectDelays[min(failure, len(reconnectDelays))-1]
+}
+
+// sessionResult is how one SSM session of a tunnel ended.
+type sessionResult struct {
+	ready     bool          // the local port was listening
+	connected time.Duration // time since it was ready
+	reason    msg.Message   // why it ended, when not asked by the user
+}
+
+// connect keeps the tunnel of a target open until ctx is cancelled (the user
+// disconnects or the app closes), reconnecting when it drops.
 func (a *App) connect(ctx context.Context, envName string, p env.Profile, t env.Target, openChrome bool) {
-	key := tunnelKey(envName, t.Name)
 	set := func(status string, m msg.Message) { a.setState(envName, t.Name, status, m) }
 	set(StatusConnecting, msg.New(msg.TunnelCheckingSession))
 
@@ -573,12 +599,98 @@ func (a *App) connect(ctx context.Context, envName string, p env.Profile, t env.
 	}
 
 	set(StatusConnecting, msg.New(msg.TunnelStarting))
+	res := a.runSession(ctx, envName, creds, p, t, func() {
+		if openChrome && t.UsesBrowser() {
+			if err := a.openChrome(t); err != nil {
+				a.logf(t.Name, msg.From(err))
+			}
+		}
+	})
+	if ctx.Err() != nil {
+		set(StatusIdle, msg.New(msg.TunnelClosed))
+		return
+	}
+	if !res.ready {
+		// A first connection that fails is a setup problem, not a drop
+		a.logf(t.Name, res.reason)
+		set(StatusError, res.reason)
+		return
+	}
+	failures := 0
+	for {
+		if res.ready {
+			a.logf(t.Name, msg.Message{
+				Code:   msg.TunnelDropped,
+				Params: map[string]string{"after": formatDuration(res.connected)},
+				Detail: res.reason.Detail,
+			})
+			if res.connected >= reconnectStableAfter {
+				failures = 0
+			}
+		} else {
+			a.logf(t.Name, res.reason)
+		}
+		failures++
+		if failures > reconnectMaxFailures {
+			m := msg.Message{
+				Code:   msg.TunnelReconnectGaveUp,
+				Params: map[string]string{"attempts": fmt.Sprint(reconnectMaxFailures)},
+				Detail: res.reason.Detail,
+			}
+			a.logf(t.Name, m)
+			set(StatusError, m)
+			return
+		}
+
+		delay := reconnectDelay(failures)
+		attempt := map[string]string{"attempt": fmt.Sprint(failures), "max": fmt.Sprint(reconnectMaxFailures)}
+		waiting := msg.Message{Code: msg.TunnelReconnectWaiting, Params: map[string]string{"seconds": fmt.Sprint(int(delay.Seconds()))}}
+		for k, v := range attempt {
+			waiting.Params[k] = v
+		}
+		a.logf(t.Name, waiting)
+		set(StatusConnecting, waiting)
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			set(StatusIdle, msg.New(msg.TunnelClosed))
+			return
+		}
+
+		set(StatusConnecting, msg.Message{Code: msg.TunnelReconnecting, Params: attempt})
+		// No SSO login without the user: it would open the browser on its own
+		creds, err := a.sso.Credentials(ctx, p)
+		if errors.Is(err, sso.ErrLoginRequired) {
+			m := msg.New(msg.TunnelReconnectLoginRequired)
+			a.logf(t.Name, m)
+			set(StatusError, m)
+			return
+		}
+		if err != nil {
+			res = sessionResult{reason: msg.From(err)}
+		} else {
+			// Chrome is not opened again: it keeps working on the same port
+			res = a.runSession(ctx, envName, creds, p, t, func() {
+				a.logf(t.Name, msg.New(msg.TunnelReconnected, "port", t.LocalPort))
+			})
+		}
+		if ctx.Err() != nil {
+			set(StatusIdle, msg.New(msg.TunnelClosed))
+			return
+		}
+	}
+}
+
+// runSession runs one SSM session of the tunnel until it ends or ctx is
+// cancelled. It reports the tunnel as connected while it is ready and calls
+// onReady once the local port listens.
+func (a *App) runSession(ctx context.Context, envName string, creds aws.Credentials, p env.Profile, t env.Target, onReady func()) sessionResult {
+	key := tunnelKey(envName, t.Name)
 	s, err := tunnel.Start(ctx, creds, p, t, func(line string) {
 		a.logf(t.Name, msg.Message{Code: msg.TunnelPluginOutput, Detail: line})
 	})
 	if err != nil {
-		a.fail(ctx, envName, t.Name, err)
-		return
+		return sessionResult{reason: msg.From(err)}
 	}
 	a.mu.Lock()
 	a.tunnels[key] = s
@@ -591,32 +703,35 @@ func (a *App) connect(ctx context.Context, envName string, p env.Profile, t env.
 
 	select {
 	case <-s.Ready():
-		set(StatusConnected, msg.New(msg.TunnelActive, "port", t.LocalPort))
-		if openChrome && t.UsesBrowser() {
-			if err := a.openChrome(t); err != nil {
-				a.logf(t.Name, msg.From(err))
-			}
-		}
 	case <-s.Done():
-		// The plugin exits with code 0 on most failures, so report its last message
-		if s.Err() == nil && ctx.Err() == nil {
-			set(StatusError, msg.Message{Code: msg.TunnelEndedBeforeReady, Detail: s.LastOutput()})
-			return
-		}
+		return sessionResult{reason: endReason(s, msg.TunnelEndedBeforeReady)}
 	case <-ctx.Done():
 		s.Stop()
+		return sessionResult{}
 	}
 
+	readyAt := time.Now()
+	a.setState(envName, t.Name, StatusConnected, msg.New(msg.TunnelActive, "port", t.LocalPort))
+	onReady()
 	select {
 	case <-s.Done():
 	case <-ctx.Done():
 		s.Stop()
 	}
+	return sessionResult{ready: true, connected: time.Since(readyAt), reason: endReason(s, msg.TunnelEndedWithError)}
+}
+
+// endReason describes how the plugin ended. It exits with code 0 on most
+// failures, so its last line is the best explanation.
+func endReason(s *tunnel.Session, code string) msg.Message {
 	if err := s.Err(); err != nil {
-		set(StatusError, msg.From(msg.Wrap(msg.TunnelEndedWithError, err)))
-		return
+		return msg.From(msg.Wrap(code, err))
 	}
-	set(StatusIdle, msg.New(msg.TunnelClosed))
+	return msg.Message{Code: code, Detail: s.LastOutput()}
+}
+
+func formatDuration(d time.Duration) string {
+	return d.Round(time.Second).String()
 }
 
 func (a *App) login(ctx context.Context, p env.Profile) error {

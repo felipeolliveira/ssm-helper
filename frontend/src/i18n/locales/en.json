@@ -287,6 +287,12 @@
     "TUNNEL_CLOSED": "Tunnel closed.",
     "TUNNEL_CANCELLED": "Connection cancelled.",
     "TUNNEL_PLUGIN_OUTPUT": "{detail}",
+    "TUNNEL_DROPPED": "The tunnel dropped after {after} connected",
+    "TUNNEL_RECONNECT_WAITING": "Reconnecting in {seconds}s (attempt {attempt} of {max})...",
+    "TUNNEL_RECONNECTING": "Reconnecting the tunnel (attempt {attempt} of {max})...",
+    "TUNNEL_RECONNECTED": "Tunnel reconnected on localhost:{port}",
+    "TUNNEL_RECONNECT_GAVE_UP": "Could not reconnect the tunnel after {attempts} attempts. Connect again when the network is back",
+    "TUNNEL_RECONNECT_LOGIN_REQUIRED": "The tunnel dropped and the SSO session has expired. Connect again to sign in",
 
     "CHROME_NOT_FOUND": "Chrome was not found on this computer",
     "CHROME_OPEN_FAILED": "Could not open Chrome",

@@ -40,7 +40,7 @@ Tudo o que o app usa e grava fica na pasta do `.exe` (veja [O que fica na pasta 
 
 A barra lateral tem quatro telas, o seletor de ambiente e o log.
 
-- **Targets**: um card por target do ambiente ativo, com perfil, região, portas e domínios. **Conectar** abre o túnel; se a sessão SSO estiver expirada, o login é feito antes pelo navegador. **Desconectar** encerra o túnel. Fechar o app encerra todos os túneis.
+- **Targets**: um card por target do ambiente ativo, com perfil, região, portas e domínios. **Conectar** abre o túnel; se a sessão SSO estiver expirada, o login é feito antes pelo navegador. **Desconectar** encerra o túnel. Fechar o app encerra todos os túneis. Se um túnel cair sozinho (timeout de inatividade do SSM, troca de rede ou VPN, computador em suspensão), o app reconecta com esperas crescentes, até 10 tentativas seguidas; se a sessão SSO tiver expirado, ele para e pede para conectar de novo.
 - **Perfis AWS**: conta, role, região e até quando vale a sessão SSO de cada perfil. **Login SSO** renova a sessão sem abrir túnel.
 - **Ambiente**: edita o ambiente ativo (veja [Ambientes](#ambientes)).
 - **Preferências**: idioma das telas (veja [Idioma](#idioma)) e paletas de cores (veja [Aparência](#aparência)).

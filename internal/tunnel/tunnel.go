@@ -20,7 +20,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	pluginlog "github.com/aws/session-manager-plugin/src/log"
 	"github.com/aws/session-manager-plugin/src/sessionmanagerplugin/session"
+	"github.com/cihub/seelog"
 	_ "github.com/aws/session-manager-plugin/src/sessionmanagerplugin/session/portsession"
 
 	"github.com/felipeolliveira/ssm-helper/internal/env"
@@ -37,9 +39,50 @@ const responseEnv = "AWS_SSM_START_SESSION_RESPONSE_SSM_HELPER"
 // readyMessage is printed by the plugin once the local port is listening.
 const readyMessage = "Waiting for connections"
 
+// pluginLogConfig sends the plugin's own warnings and errors (reconnection
+// attempts, resend timeouts) to its output, which ends up in the app log. By
+// default they go nowhere: the built-in seelog configuration is "off" and the
+// plugin only reads seelog.xml next to the executable or under %ProgramFiles%.
+const pluginLogConfig = `<seelog type="sync" minlevel="warn">
+    <outputs formatid="plugin"><console/></outputs>
+    <formats><format id="plugin" format="[plugin %LEVEL] %Msg%n"/></formats>
+</seelog>`
+
+// pluginNoise are plugin log lines that are expected and harmless. On Windows
+// the plugin tries to turn on the color codes of the console, but its output
+// is a pipe to the app, not a console.
+var pluginNoise = []string{
+	"error getting console mode:",
+	"error setting console mode:",
+}
+
+func isPluginNoise(line string) bool {
+	for _, noise := range pluginNoise {
+		if strings.Contains(line, noise) {
+			return true
+		}
+	}
+	return false
+}
+
 // RunPlugin runs the Session Manager plugin with the arguments after PluginArg.
 func RunPlugin(args []string) {
+	setupPluginLog()
 	session.ValidateInputAndStartSession(args, os.Stdout)
+}
+
+// setupPluginLog loads the plugin logger before the plugin does, so it is not
+// read from a seelog.xml, and points it at the console.
+func setupPluginLog() {
+	logger, ok := pluginlog.Logger(false, "session-manager-plugin").(*pluginlog.Wrapper)
+	if !ok {
+		return
+	}
+	base, err := seelog.LoggerFromConfigAsBytes([]byte(pluginLogConfig))
+	if err != nil {
+		return
+	}
+	logger.ReplaceDelegate(base)
 }
 
 // Session is a running port forwarding tunnel.
@@ -181,7 +224,7 @@ func (s *Session) readOutput(r io.Reader, logf func(string)) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
+		if line == "" || isPluginNoise(line) {
 			continue
 		}
 		s.lastLine.Store(line)

@@ -85,6 +85,14 @@ const (
 	TunnelCancelled        = "TUNNEL_CANCELLED"          //
 	TunnelPluginOutput     = "TUNNEL_PLUGIN_OUTPUT"      // detail: a line from the AWS plugin, in English
 
+	// Reconnection of a tunnel that dropped by itself
+	TunnelDropped                = "TUNNEL_DROPPED"                  // after (duration); detail: last plugin output
+	TunnelReconnectWaiting       = "TUNNEL_RECONNECT_WAITING"        // seconds, attempt, max
+	TunnelReconnecting           = "TUNNEL_RECONNECTING"             // attempt, max
+	TunnelReconnected            = "TUNNEL_RECONNECTED"              // port
+	TunnelReconnectGaveUp        = "TUNNEL_RECONNECT_GAVE_UP"        // attempts; detail
+	TunnelReconnectLoginRequired = "TUNNEL_RECONNECT_LOGIN_REQUIRED" //
+
 	// Chrome
 	ChromeNotFound   = "CHROME_NOT_FOUND"   //
 	ChromeOpenFailed = "CHROME_OPEN_FAILED" // detail
