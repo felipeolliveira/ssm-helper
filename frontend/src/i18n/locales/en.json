@@ -200,6 +200,8 @@
       "title": "Log",
       "subtitle": "Messages from the SSO login and the tunnels",
       "clear": "Clear",
+      "openFolder": "Open folder",
+      "openFolderHint": "Opens ssm-helper-data/logs, with one file per day",
       "empty": "No messages yet."
     },
     "sso": {
@@ -294,6 +296,8 @@
     "DATA_DIR_CREATE_FAILED": "Could not create {dir}",
     "DATA_DIR_NOT_PROTECTED": "Could not restrict {dir} to your user. It holds the SSO login and the Chrome cookies: keep the app in a folder of your own",
     "DATA_LEGACY_DIR_UNUSED": "The folder {legacy}, from earlier versions, is no longer used: the SSO login and the Chrome profiles now live in {dir}. Sign in again when asked and delete the old folder.",
+    "LOG_FILE_WRITE_FAILED": "Could not write the log file in {dir}. The panel keeps working, but the messages are not being saved",
+    "LOG_DIR_OPEN_FAILED": "Could not open the log folder {dir}",
 
     "LOCAL_PROFILE_UNNAMED": "Profile #{index} has no name",
     "LOCAL_PROFILE_DUPLICATE": "Profile '{name}' is duplicated",

@@ -27,6 +27,8 @@ export function OpenAppFolder():Promise<void>;
 
 export function OpenChrome(arg1:string):Promise<void>;
 
+export function OpenLogFolder():Promise<void>;
+
 export function ProfileStatuses():Promise<Array<main.ProfileStatus>>;
 
 export function SaveAppearance(arg1:settings.Appearance):Promise<Array<msg.Message>>;

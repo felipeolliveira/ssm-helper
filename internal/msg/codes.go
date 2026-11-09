@@ -95,4 +95,8 @@ const (
 	DataDirCreateFailed = "DATA_DIR_CREATE_FAILED" // dir; detail
 	DataDirNotProtected = "DATA_DIR_NOT_PROTECTED" // dir; detail
 	DataLegacyDirUnused = "DATA_LEGACY_DIR_UNUSED" // legacy, dir
+
+	// Log files (ssm-helper-data/logs)
+	LogFileWriteFailed = "LOG_FILE_WRITE_FAILED" // dir; detail
+	LogDirOpenFailed   = "LOG_DIR_OPEN_FAILED"   // dir; detail
 )

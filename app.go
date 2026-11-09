@@ -16,6 +16,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"github.com/felipeolliveira/ssm-helper/internal/applog"
 	"github.com/felipeolliveira/ssm-helper/internal/chrome"
 	"github.com/felipeolliveira/ssm-helper/internal/env"
 	"github.com/felipeolliveira/ssm-helper/internal/jsonfile"
@@ -117,6 +118,7 @@ type App struct {
 	dir     string // folder with the environments and ssm-helper.json
 	dataDir string // ssm-helper-data next to the executable: SSO cache, Chrome profiles, WebView2 data
 	sso     *sso.Manager
+	logFile *applog.File // ssm-helper-data/logs, one file per day
 
 	mu       sync.Mutex
 	settings settings.Settings
@@ -125,6 +127,7 @@ type App struct {
 	states   map[string]TunnelState
 	cancels  map[string]context.CancelFunc // pending connects and logins
 	startup  []LogEntry                    // messages from before the window opened
+	logError bool                          // a log file write failed and was reported
 }
 
 func NewApp(dir, dataDir string) *App {
@@ -134,12 +137,17 @@ func NewApp(dir, dataDir string) *App {
 		tunnels: map[string]*tunnel.Session{},
 		states:  map[string]TunnelState{},
 		cancels: map[string]context.CancelFunc{},
+		logFile: applog.New(filepath.Join(dataDir, logDirName)),
 	}
 	a.sso = sso.NewManager(filepath.Join(dataDir, "sso-cache"), func(url string) {
 		wruntime.BrowserOpenURL(a.ctx, url)
 	})
-	a.noteLegacyDataDir()
+	// Checked before secureDataDir creates the data folder
+	legacy := a.legacyDataDir()
 	a.secureDataDir()
+	if legacy != "" {
+		a.note("data", msg.New(msg.DataLegacyDirUnused, "legacy", legacy, "dir", a.dataDir))
+	}
 	a.loadSettings()
 	return a
 }
@@ -217,6 +225,7 @@ func (a *App) shutdown(context.Context) {
 	for _, s := range sessions {
 		s.Stop()
 	}
+	a.logFile.Close()
 }
 
 // StartupMessages returns what happened before the window opened (migration, settings problems).
@@ -423,10 +432,25 @@ func (a *App) SaveAppearance(appearance settings.Appearance) ([]msg.Message, err
 
 // OpenAppFolder shows the folder of the program, which holds the environments.
 func (a *App) OpenAppFolder() error {
-	if runtime.GOOS == "windows" {
-		return exec.Command("explorer.exe", a.dir).Start()
+	return openFolder(a.dir)
+}
+
+// OpenLogFolder shows the folder with the log files, creating it if needed.
+func (a *App) OpenLogFolder() error {
+	if err := os.MkdirAll(a.logFile.Dir, 0o700); err != nil {
+		return msg.Wrap(msg.LogDirOpenFailed, err, "dir", a.logFile.Dir)
 	}
-	return exec.Command("xdg-open", a.dir).Start()
+	if err := openFolder(a.logFile.Dir); err != nil {
+		return msg.Wrap(msg.LogDirOpenFailed, err, "dir", a.logFile.Dir)
+	}
+	return nil
+}
+
+func openFolder(dir string) error {
+	if runtime.GOOS == "windows" {
+		return exec.Command("explorer.exe", dir).Start()
+	}
+	return exec.Command("xdg-open", dir).Start()
 }
 
 // ProfileStatuses reports the SSO session of each profile of the active environment.
@@ -706,23 +730,53 @@ func (a *App) setState(envName, target, status string, m msg.Message) {
 	wruntime.EventsEmit(a.ctx, eventTunnelState, st)
 }
 
+// logf shows a message in the log panel and writes it to the log file.
 func (a *App) logf(source string, m msg.Message) {
 	if a.ctx == nil {
 		a.note(source, m)
 		return
 	}
-	wruntime.EventsEmit(a.ctx, eventLog, newLogEntry(source, m))
+	now := time.Now()
+	a.writeLogFile(now, source, m)
+	a.show(newLogEntry(now, source, m))
 }
 
-// note keeps a message for StartupMessages.
+// note keeps a message for StartupMessages and writes it to the log file.
 func (a *App) note(source string, m msg.Message) {
+	now := time.Now()
+	a.writeLogFile(now, source, m)
 	a.mu.Lock()
-	a.startup = append(a.startup, newLogEntry(source, m))
+	a.startup = append(a.startup, newLogEntry(now, source, m))
 	a.mu.Unlock()
 }
 
-func newLogEntry(source string, m msg.Message) LogEntry {
-	return LogEntry{Time: time.Now().Format("15:04:05"), Source: source, Message: m}
+// show sends an entry to the log panel, or keeps it for StartupMessages
+// before the window opens.
+func (a *App) show(entry LogEntry) {
+	if a.ctx == nil {
+		a.mu.Lock()
+		a.startup = append(a.startup, entry)
+		a.mu.Unlock()
+		return
+	}
+	wruntime.EventsEmit(a.ctx, eventLog, entry)
+}
+
+// writeLogFile appends to the log file of the day. Only the first failure is
+// shown, so a full disk does not flood the panel; the app keeps working.
+func (a *App) writeLogFile(t time.Time, source string, m msg.Message) {
+	err := a.logFile.Write(t, source, m)
+	a.mu.Lock()
+	report := err != nil && !a.logError
+	a.logError = err != nil
+	a.mu.Unlock()
+	if report {
+		a.show(newLogEntry(t, "log", msg.From(msg.Wrap(msg.LogFileWriteFailed, err, "dir", a.logFile.Dir))))
+	}
+}
+
+func newLogEntry(t time.Time, source string, m msg.Message) LogEntry {
+	return LogEntry{Time: t.Format("15:04:05"), Source: source, Message: m}
 }
 
 // startupBackground is the window color before the frontend loads, taken from
@@ -741,6 +795,9 @@ func (a *App) startupBackground() *options.RGBA {
 // dataDirName holds what the app generates (SSO cache, Chrome profiles,
 // WebView2 data) next to the executable, so the whole app travels with its folder.
 const dataDirName = "ssm-helper-data"
+
+// logDirName is the folder of the daily log files, inside the data folder.
+const logDirName = "logs"
 
 // defaultPaths returns the folder of the executable (or SSM_HELPER_DIR), which
 // holds the environments and ssm-helper.json, and its data folder.
@@ -767,19 +824,20 @@ func (a *App) secureDataDir() {
 	}
 }
 
-// noteLegacyDataDir points out %LOCALAPPDATA%\ssm-helper, used by earlier
-// versions. It is not moved: any copy of the app would take the SSO login and
-// the Chrome profiles from the others.
-func (a *App) noteLegacyDataDir() {
+// legacyDataDir returns %LOCALAPPDATA%\ssm-helper, used by earlier versions,
+// when it exists and the data folder does not yet. It is not moved: any copy
+// of the app would take the SSO login and the Chrome profiles from the others.
+func (a *App) legacyDataDir() string {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
-		return
+		return ""
 	}
 	legacy := filepath.Join(cacheDir, "ssm-helper")
 	if _, err := os.Stat(a.dataDir); err == nil {
-		return
+		return ""
 	}
 	if info, err := os.Stat(legacy); err == nil && info.IsDir() {
-		a.note("data", msg.New(msg.DataLegacyDirUnused, "legacy", legacy, "dir", a.dataDir))
+		return legacy
 	}
+	return ""
 }

@@ -46,6 +46,10 @@ export function OpenChrome(arg1) {
   return window['go']['main']['App']['OpenChrome'](arg1);
 }
 
+export function OpenLogFolder() {
+  return window['go']['main']['App']['OpenLogFolder']();
+}
+
 export function ProfileStatuses() {
   return window['go']['main']['App']['ProfileStatuses']();
 }

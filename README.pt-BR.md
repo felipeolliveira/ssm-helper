@@ -250,6 +250,7 @@ ssm-helper\
     sso-cache\                token do login SSO, um arquivo por ssoUrl
     chrome-<perfil>\          perfis do Chrome dos targets, com logins e cookies das aplicações
     webview\                  dados internos da janela do app (WebView2)
+    logs\                     tudo o que aparece no Log, um arquivo por dia (ssm-helper-AAAA-MM-DD.log)
 ```
 
 Os dados do app ficam só nessa pasta, nada em `%APPDATA%` ou `%LOCALAPPDATA%`. O Chrome instalado e o próprio Windows mantêm os registros deles, como em qualquer programa.
