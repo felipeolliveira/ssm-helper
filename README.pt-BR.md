@@ -38,14 +38,15 @@ Tudo o que o app usa e grava fica na pasta do `.exe` (veja [O que fica na pasta 
 
 ## Uso
 
-A barra lateral tem quatro telas, o seletor de ambiente e o log.
+A barra lateral tem cinco telas, o seletor de ambiente e o log.
 
 - **Targets**: um card por target do ambiente ativo, com perfil, região, portas e domínios. **Conectar** abre o túnel; se a sessão SSO estiver expirada, o login é feito antes pelo navegador. **Desconectar** encerra o túnel. Fechar o app encerra todos os túneis. Se um túnel cair sozinho (timeout de inatividade do SSM, troca de rede ou VPN, computador em suspensão), o app reconecta com esperas crescentes, até 10 tentativas seguidas; se a sessão SSO tiver expirado, ele para e pede para conectar de novo.
 - **Perfis AWS**: conta, role, região e até quando vale a sessão SSO de cada perfil. **Login SSO** renova a sessão sem abrir túnel.
 - **Ambiente**: edita o ambiente ativo (veja [Ambientes](#ambientes)).
 - **Preferências**: idioma das telas (veja [Idioma](#idioma)) e paletas de cores (veja [Aparência](#aparência)).
+- **Sobre**: versão do app, build (tipo, commit e data), plataforma, versões do Session Manager Plugin embutido, do Wails e do Go, e as pastas do app, dos dados e dos logs. **Copiar detalhes** copia isso em texto, para colar num relato de problema; **Versões** abre a página de releases.
 - **Ambiente ativo**, acima do Log: troca de ambiente ou cria um novo.
-- **Log**: mensagens do login, dos túneis e das conversões de arquivos. As que vêm da AWS ficam em inglês.
+- **Log**: mensagens do login, dos túneis, das reconexões e das conversões de arquivos. As que vêm da AWS ficam em inglês, e os avisos e erros do próprio Session Manager Plugin aparecem como linhas `[plugin WARN]` e `[plugin ERROR]`. Tudo também é gravado num arquivo por dia em `ssm-helper-data\logs`, que fica depois que o app fecha; **Abrir pasta**, no painel do Log, abre essa pasta.
 
 ### Ocultar dados sensíveis
 
@@ -245,7 +246,7 @@ Os perfis vêm **apenas** do ambiente ativo. O app não lê nem altera `~/.aws/c
 ssm-helper\
   ssm-helper.exe
   env.json, env.<nome>.json   ambientes
-  ssm-helper.json             preferências: ambiente ativo, olho, Chrome ao conectar, aparência
+  ssm-helper.json             preferências: ambiente ativo, idioma, olho, Chrome ao conectar, aparência
   ssm-helper-data\
     sso-cache\                token do login SSO, um arquivo por ssoUrl
     chrome-<perfil>\          perfis do Chrome dos targets, com logins e cookies das aplicações
@@ -289,6 +290,9 @@ A conversão dos ambientes só acontece enquanto não existe nenhum `env*.json` 
 | "Chrome não encontrado neste computador" | O Chrome não está instalado ou foi bloqueado. O comando usado aparece no Log |
 | O Chrome abre, mas não respeita o mapeamento | Já havia uma janela aberta com o mesmo perfil do Chrome (do mesmo target ou de outro com o mesmo `chromeProfile`). Feche essa janela e conecte de novo |
 | Aviso "sinalização de linha de comando não suportada" no Chrome | Esperado ao usar `--host-rules`. Veja [o aviso](#aviso-sinalização-de-linha-de-comando-não-suportada) |
+| "Não foi possível reconectar o túnel depois de 10 tentativas" | A rede ou a VPN ficou fora do ar enquanto o app tentava. Conecte de novo quando ela voltar; o Log e os arquivos em `ssm-helper-data\logs` mostram cada tentativa |
+| "O túnel caiu e a sessão SSO expirou" | Durante uma reconexão, o app não abre o navegador sozinho. Clique em **Conectar** para fazer login de novo |
+| Relatar um problema | Use **Copiar detalhes** na tela **Sobre** para enviar a versão e o build, e anexe o arquivo do dia em `ssm-helper-data\logs` (com cuidado: ele pode citar hosts e IDs de conta) |
 
 ## Desenvolvimento
 
@@ -303,10 +307,11 @@ O app é escrito em Go com [Wails v2](https://wails.io) e a interface em React +
 | `internal/sso` | Login SSO (device authorization) e credenciais da role |
 | `internal/tunnel` | Sessão SSM. O [Session Manager Plugin](https://github.com/aws/session-manager-plugin) é compilado dentro do executável, e cada túnel roda como um processo filho do próprio `.exe` (`--ssm-session-plugin`), porque o plugin encerra o processo ao fim da sessão |
 | `internal/chrome` | Abertura do Chrome com `--host-rules` |
+| `internal/applog` | Arquivos de log diários (`ssm-helper-data\logs\ssm-helper-AAAA-MM-DD.log`), com o código, os parâmetros e o detalhe de cada mensagem, já que os textos só são traduzidos no frontend |
 
-`app.go` expõe os bindings usados pelo frontend, e `main.go` configura a janela.
+`app.go` expõe os bindings usados pelo frontend, `about.go` os dados da tela Sobre, e `main.go` configura a janela.
 
-Requisitos: Go 1.25+, Node 20+ e o Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0`).
+Requisitos: Go 1.26+, Node 20+ e o Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0`).
 
 ```sh
 make test   # go vet, go test, traduções dos códigos e checagem de tipos do frontend
@@ -326,7 +331,7 @@ O workflow `.github/workflows/release.yml` compila e publica o `.exe`:
 1. Crie uma release com uma tag no formato `vX.Y.Z`, pela página de Releases do GitHub ou com `gh release create v1.2.0 --title v1.2.0 --notes "..."`.
 2. Ao publicar a release, o workflow roda num Windows do GitHub, faz os mesmos testes do `make test`, compila e anexa à release o `ssm-helper.exe` e o `SHA256SUMS.txt`.
 
-A versão nas propriedades do `.exe` vem da tag (`v1.2.0` vira `1.2.0`), então não é preciso mudar o `wails.json` a cada versão. O workflow também pode ser rodado à mão (**Actions → Release → Run workflow**) para uma tag existente: o build fica como artefato da execução e, com **upload** marcado, substitui os arquivos da release.
+A versão nas propriedades do `.exe` vem da tag (`v1.2.0` vira `1.2.0`), então não é preciso mudar o `wails.json` a cada versão. O `wails.json` vai embutido no executável, então a tela **Sobre** mostra a mesma versão; builds locais mostram a versão do arquivo (`1.0.0`), e o commit os diferencia. O workflow também pode ser rodado à mão (**Actions → Release → Run workflow**) para uma tag existente: o build fica como artefato da execução e, com **upload** marcado, substitui os arquivos da release.
 
 Por enquanto só há build para Windows.
 
