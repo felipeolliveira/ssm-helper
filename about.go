@@ -20,6 +20,16 @@ import (
 //go:embed wails.json
 var wailsConfig []byte
 
+// Set with -ldflags "-X main.commit=..." by the Makefile and the release
+// workflow: wails build passes -buildvcs=false to go build, so the build
+// info has no Git revision. commitModified is "true" for a build with
+// uncommitted changes.
+var (
+	commit         string
+	commitTime     string
+	commitModified string
+)
+
 // AboutInfo is what the About screen shows.
 type AboutInfo struct {
 	Name        string `json:"name"`
@@ -50,6 +60,9 @@ func (a *App) About() AboutInfo {
 		Platform:      runtime.GOOS + "/" + runtime.GOARCH,
 		GoVersion:     runtime.Version(),
 		PluginVersion: tunnel.PluginVersion,
+		Commit:        commit,
+		CommitTime:    commitTime,
+		Modified:      commitModified == "true",
 		AppDir:        a.dir,
 		DataDir:       a.dataDir,
 		LogDir:        filepath.Join(a.dataDir, logDirName),
@@ -82,7 +95,11 @@ func (a *App) About() AboutInfo {
 				info.WailsVersion = dep.Version
 			}
 		}
+		// Only reached by builds made with plain go build
 		for _, s := range build.Settings {
+			if commit != "" {
+				break
+			}
 			switch s.Key {
 			case "vcs.revision":
 				info.Commit = s.Value
