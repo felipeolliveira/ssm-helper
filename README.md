@@ -40,7 +40,7 @@ Everything the app uses and writes stays in the `.exe` folder (see [What lives i
 
 The sidebar has four screens, the environment selector and the log.
 
-- **Targets**: one card per target of the active environment, with profile, region, ports and domains. **Connect** opens the tunnel; if the SSO session has expired, the browser login happens first. **Disconnect** closes the tunnel. Closing the app closes every tunnel.
+- **Targets**: one card per target of the active environment, with profile, region, ports and domains. **Connect** opens the tunnel; if the SSO session has expired, the browser login happens first. **Disconnect** closes the tunnel. Closing the app closes every tunnel. If a tunnel drops by itself (SSM idle timeout, network or VPN change, the computer sleeping), the app reconnects it with growing waits, up to 10 attempts in a row; when the SSO session has expired, it stops and asks you to connect again.
 - **AWS profiles**: account, role, region and how long the SSO session of each profile is valid. **SSO login** renews the session without opening a tunnel.
 - **Environment**: edits the active environment (see [Environments](#environments)).
 - **Preferences**: screen language (see [Language](#language)) and color palettes (see [Appearance](#appearance)).
