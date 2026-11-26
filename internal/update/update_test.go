@@ -2,7 +2,10 @@ package update
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -40,19 +43,48 @@ func TestNewer(t *testing.T) {
 	}
 }
 
-// fakeGitHub serves a release with the given executable and checksum file.
+// testKey signs the fake releases; the package trusts it during the tests.
+var testKey = func() ed25519.PrivateKey {
+	_, key, _ := ed25519.GenerateKey(rand.Reader)
+	return key
+}()
+
+func trustTestKey(t *testing.T) {
+	t.Helper()
+	saved := keys
+	keys = func() ([]ed25519.PublicKey, error) {
+		return []ed25519.PublicKey{testKey.Public().(ed25519.PublicKey)}, nil
+	}
+	t.Cleanup(func() { keys = saved })
+}
+
+// fakeGitHub serves a release with the given executable and checksum file,
+// signed with testKey.
 func fakeGitHub(t *testing.T, exe []byte, sums string) *httptest.Server {
 	t.Helper()
+	return fakeGitHubSigned(t, exe, sums, Sign(testKey, []byte(sums)))
+}
+
+// fakeGitHubSigned serves the release with the given signature; an empty one
+// leaves SHA256SUMS.txt.sig out of the release.
+func fakeGitHubSigned(t *testing.T, exe []byte, sums, sig string) *httptest.Server {
+	t.Helper()
+	trustTestKey(t)
 	mux := http.NewServeMux()
 	var srv *httptest.Server
 	mux.HandleFunc("/repos/owner/app/releases/latest", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("User-Agent") == "" {
 			t.Error("no User-Agent")
 		}
+		sigAsset := ""
+		if sig != "" {
+			sigAsset = fmt.Sprintf(`, {"name": "SHA256SUMS.txt.sig", "browser_download_url": "%s/dl/SHA256SUMS.txt.sig"}`, srv.URL)
+		}
 		fmt.Fprintf(w, `{"tag_name": "v1.4.0", "html_url": "https://example/r/v1.4.0", "assets": [
 			{"name": "ssm-helper.exe", "browser_download_url": "%[1]s/dl/ssm-helper.exe"},
-			{"name": "SHA256SUMS.txt", "browser_download_url": "%[1]s/dl/SHA256SUMS.txt"}]}`, srv.URL)
+			{"name": "SHA256SUMS.txt", "browser_download_url": "%[1]s/dl/SHA256SUMS.txt"}%[2]s]}`, srv.URL, sigAsset)
 	})
+	mux.HandleFunc("/dl/SHA256SUMS.txt.sig", func(w http.ResponseWriter, r *http.Request) { fmt.Fprintln(w, sig) })
 	mux.HandleFunc("/dl/ssm-helper.exe", func(w http.ResponseWriter, r *http.Request) { w.Write(exe) })
 	mux.HandleFunc("/dl/SHA256SUMS.txt", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, sums) })
 	srv = httptest.NewServer(mux)
@@ -214,5 +246,84 @@ func TestSwapUndoes(t *testing.T) {
 	}
 	if data, _ := os.ReadFile(exe); string(data) != "v1" {
 		t.Errorf("exe after a failed swap = %q", data)
+	}
+}
+
+func TestSignatureRejected(t *testing.T) {
+	exe := []byte("tampered executable")
+	sums := sumOf(exe) + "  ssm-helper.exe\n"
+	// Signed with a key the app does not know, as after the release files were replaced
+	_, other, _ := ed25519.GenerateKey(rand.Reader)
+	fakeGitHubSigned(t, exe, sums, Sign(other, []byte(sums)))
+	r, err := Latest(context.Background(), "owner/app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := VerifiedSums(context.Background(), r); !errors.Is(err, msg.Err(msg.UpdateSignatureInvalid)) {
+		t.Fatalf("VerifiedSums = %v, want %s", err, msg.UpdateSignatureInvalid)
+	}
+	path := filepath.Join(t.TempDir(), "new")
+	err = Download(context.Background(), r, path, nil)
+	if !errors.Is(err, msg.Err(msg.UpdateSignatureInvalid)) || msg.From(err).Params["version"] != "v1.4.0" {
+		t.Fatalf("Download = %v, want %s for v1.4.0", err, msg.UpdateSignatureInvalid)
+	}
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Error("the executable was downloaded despite the bad signature")
+	}
+}
+
+func TestUnsignedReleaseNotReady(t *testing.T) {
+	exe := []byte("x")
+	fakeGitHubSigned(t, exe, sumOf(exe)+"  ssm-helper.exe\n", "")
+	r, err := Latest(context.Background(), "owner/app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Ready() {
+		t.Error("a release without SHA256SUMS.txt.sig is ready")
+	}
+}
+
+func TestSignVerify(t *testing.T) {
+	primaryPub, primary, _ := ed25519.GenerateKey(rand.Reader)
+	backupPub, backup, _ := ed25519.GenerateKey(rand.Reader)
+	trusted := []ed25519.PublicKey{primaryPub, backupPub}
+	sums := []byte("abc  ssm-helper.exe\n")
+
+	for name, key := range map[string]ed25519.PrivateKey{"primary": primary, "backup": backup} {
+		if !Verify(trusted, sums, Sign(key, sums)+"\n") {
+			t.Errorf("signature of the %s key rejected", name)
+		}
+	}
+	if Verify(trusted, []byte("changed"), Sign(primary, sums)) {
+		t.Error("signature accepted for other content")
+	}
+	// A plain ed25519 signature of the file, without the context, is not accepted
+	if Verify(trusted, sums, base64.StdEncoding.EncodeToString(ed25519.Sign(primary, sums))) {
+		t.Error("signature without the context accepted")
+	}
+	if Verify(trusted, sums, "not base64!") {
+		t.Error("garbage accepted")
+	}
+
+	parsed, err := ParsePrivateKey(base64.StdEncoding.EncodeToString(primary.Seed()) + "\n")
+	if err != nil || !parsed.Equal(primary) {
+		t.Errorf("ParsePrivateKey = %v", err)
+	}
+	if _, err := ParsePublicKey("c2hvcnQ="); err == nil {
+		t.Error("a short public key was accepted")
+	}
+}
+
+// TestPublicKeysSet fails until keys.go has the primary and backup public
+// keys, so no release is built without them.
+func TestPublicKeysSet(t *testing.T) {
+	for i, s := range publicKeys {
+		if _, err := ParsePublicKey(s); err != nil {
+			t.Errorf("public key %d in keys.go: %v (generate it with: go run ./tools/updatekey generate -out <name>)", i+1, err)
+		}
+	}
+	if len(publicKeys) != 2 {
+		t.Errorf("keys.go has %d public keys, want 2 (primary and backup)", len(publicKeys))
 	}
 }

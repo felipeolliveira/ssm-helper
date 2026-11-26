@@ -137,6 +137,7 @@ type App struct {
 	latest         *update.Release // last release found on GitHub
 	checkedAt      time.Time
 	notified       string // release already announced
+	blocked        string // release whose signature did not match
 	applyingUpdate bool
 }
 

@@ -101,6 +101,8 @@ export type UpdateInfo = {
     latest: string
     url: string
     available: boolean
+    // newer, but its signature did not match: never installed
+    blocked: boolean
     checkedAt: string
 }
 

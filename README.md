@@ -278,7 +278,7 @@ Builds published on the Releases page look for a newer release on GitHub 10 seco
 - **Update and restart**: downloads `ssm-helper.exe` from the release, checks it against the release's `SHA256SUMS.txt`, puts it in place of the current one and restarts the app. If tunnels are connected, it asks first, since they close with the app. The previous executable is kept as `ssm-helper.exe.old` and deleted on the next start;
 - **Later**: hides the bar until the app opens again.
 
-Files are only downloaded over HTTPS from GitHub's release hosts, redirects included, and the executable is capped at 200 MB. If the download, the checksum or the replacement fails, nothing changes and the bar offers **Download manually**. The check uses the GitHub API without a token and only follows a proxy set in the `HTTPS_PROXY` variable, not the Windows proxy settings: on a network that requires a proxy, the check fails (the Log says so) and the update has to be downloaded by hand. Builds made locally (`make build`) never look for updates.
+Files are only downloaded over HTTPS from GitHub's release hosts, redirects included, and the executable is capped at 200 MB. The release's `SHA256SUMS.txt` must also carry a signature (`SHA256SUMS.txt.sig`) made with a key built into the app (see [Signing releases](#signing-releases)), so replacing the release files is not enough to push an executable to everyone. A release whose signature does not match is never installed: the bar turns into a warning to tell support and **not** download that version by hand, and the Log records it. If the download, the checksum or the replacement fails, nothing changes and the bar offers **Download manually**. The check uses the GitHub API without a token and only follows a proxy set in the `HTTPS_PROXY` variable, not the Windows proxy settings: on a network that requires a proxy, the check fails (the Log says so) and the update has to be downloaded by hand. Builds made locally (`make build`) never look for updates.
 
 ## Upgrading from earlier versions
 
@@ -339,6 +339,9 @@ The app is written in Go with [Wails v2](https://wails.io), and the interface in
 | `internal/tunnel` | SSM session. The [Session Manager Plugin](https://github.com/aws/session-manager-plugin) is compiled into the executable, and each tunnel runs as a child process of the `.exe` itself (`--ssm-session-plugin`), because the plugin exits the process when the session ends |
 | `internal/chrome` | Opening Chrome with `--host-rules` |
 | `internal/applog` | Daily log files (`ssm-helper-data\logs\ssm-helper-YYYY-MM-DD.log`), with each message's code, parameters and detail, since texts are only translated in the frontend |
+| `internal/troubleshoot` | The troubleshooting file, with the sensitive values masked |
+| `internal/update` | Looking for a newer release, checking its signature and checksum, and replacing the executable |
+| `tools/updatekey` | Generating the update signing keys and signing `SHA256SUMS.txt` in the release workflow |
 
 `app.go` exposes the bindings used by the frontend, `about.go` the data of the About screen, and `main.go` sets up the window.
 
@@ -360,11 +363,41 @@ SSM_HELPER_DIR="$PWD" WSLENV="SSM_HELPER_DIR/p" ./build/bin/ssm-helper.exe
 The `.github/workflows/release.yml` workflow builds and publishes the `.exe`:
 
 1. Create a release with a tag shaped like `vX.Y.Z`, on the GitHub Releases page or with `gh release create v1.2.0 --title v1.2.0 --notes "..."`.
-2. When the release is published, the workflow runs on a GitHub Windows machine, runs the same checks as `make test`, builds and attaches `ssm-helper.exe` and `SHA256SUMS.txt` to the release.
+2. When the release is published, the workflow runs on a GitHub Windows machine, runs the same checks as `make test`, builds, signs `SHA256SUMS.txt` and attaches `ssm-helper.exe`, `SHA256SUMS.txt` and `SHA256SUMS.txt.sig` to the release.
 
 The version in the `.exe` properties comes from the tag (`v1.2.0` becomes `1.2.0`), so `wails.json` does not need to change for each version. `wails.json` is embedded in the executable, so the **About** screen shows the same version; local builds show the version in the file (`1.0.0`), and the commit tells them apart. The workflow can also be run by hand (**Actions → Release → Run workflow**) for an existing tag: the build is kept as a run artifact and, with **upload** checked, replaces the release files.
 
 For now there is only a Windows build.
+
+### Signing releases
+
+The app only installs an update whose `SHA256SUMS.txt` is signed with one of the two ed25519 public keys in `internal/update/keys.go`: the **primary** and the **backup**. `make test` fails while they are missing, so no release is built without them.
+
+Setting up, once:
+
+1. In your own terminal (not inside an AI assistant or anywhere the output is recorded), generate the two pairs. Nothing secret is printed:
+
+   ```sh
+   go run ./tools/updatekey generate -out primary
+   go run ./tools/updatekey generate -out backup
+   ```
+
+2. Store `primary.key` and `backup.key` in a password manager, in separate items. The backup key lives **only** there.
+3. Create the secret the release workflow signs with, then delete the `.key` files:
+
+   ```sh
+   gh secret set UPDATE_SIGNING_KEY --repo felipeolliveira/ssm-helper < primary.key
+   ```
+
+4. Put the content of `primary.pub` and `backup.pub` in `internal/update/keys.go`.
+
+The workflow signs with the secret and checks the signature against the keys in `keys.go` before attaching anything, so a secret that does not match fails the release instead of publishing updates nobody can install.
+
+- **Primary key lost:** set the backup key as `UPDATE_SIGNING_KEY`, generate a new primary, put its public key first in `keys.go` and release. Installed copies accept the release (signed with the backup) and get the new primary key.
+- **Primary key leaked:** same steps, removing the leaked public key from `keys.go`. Until each copy updates, it still accepts the leaked key, so do it right away.
+- **Both lost:** generate new keys; installed copies reject the next releases, and everyone downloads one version by hand. Tell them through the usual channels: the app itself never tells users to download a version whose signature failed.
+
+Releases from before signing have no `SHA256SUMS.txt.sig`, so the app never installs them, and running the workflow by hand for a tag from before `tools/updatekey` existed fails at the signing step.
 
 ### Internationalization
 

@@ -1,6 +1,7 @@
 // Package update finds a newer release of the app on GitHub, downloads its
-// executable, checks it against the release's SHA256SUMS.txt and puts it in
-// place of the running one.
+// executable, checks it against the release's SHA256SUMS.txt, whose
+// signature must match a public key built into the app, and puts it in place
+// of the running one.
 package update
 
 import (
@@ -74,6 +75,7 @@ type Release struct {
 	URL     string `json:"url"`
 	ExeURL  string `json:"-"`
 	SumsURL string `json:"-"`
+	SigURL  string `json:"-"`
 }
 
 // Latest returns the latest release of repo ("owner/name").
@@ -110,6 +112,8 @@ func Latest(ctx context.Context, repo string) (Release, error) {
 			r.ExeURL = a.URL
 		case SumsName:
 			r.SumsURL = a.URL
+		case SigName:
+			r.SigURL = a.URL
 		}
 	}
 	if _, ok := parseVersion(r.Tag); !ok {
@@ -119,8 +123,34 @@ func Latest(ctx context.Context, repo string) (Release, error) {
 }
 
 // Ready tells whether the release has the files an update needs; the
-// release workflow attaches them a few minutes after the release is published.
-func (r Release) Ready() bool { return r.ExeURL != "" && r.SumsURL != "" }
+// release workflow attaches them a few minutes after the release is
+// published. Releases from before signing have no signature and never are.
+func (r Release) Ready() bool { return r.ExeURL != "" && r.SumsURL != "" && r.SigURL != "" }
+
+// keys are the public keys that verify releases; tests replace them.
+var keys = PublicKeys
+
+// VerifiedSums downloads SHA256SUMS.txt and its signature and returns the
+// checksums only when the signature matches a key built into the app.
+func VerifiedSums(ctx context.Context, r Release) ([]byte, error) {
+	trusted, err := keys()
+	if err != nil {
+		return nil, msg.Wrap(msg.UpdateSignatureInvalid, err, "version", r.Tag)
+	}
+	sums, err := fetch(ctx, r.SumsURL, 64<<10)
+	if err != nil {
+		return nil, msg.Wrap(msg.UpdateDownloadFailed, err)
+	}
+	sig, err := fetch(ctx, r.SigURL, 4<<10)
+	if err != nil {
+		return nil, msg.Wrap(msg.UpdateDownloadFailed, err)
+	}
+	if !Verify(trusted, sums, string(sig)) {
+		return nil, msg.Wrap(msg.UpdateSignatureInvalid,
+			fmt.Errorf("%s does not match the signature in %s", SumsName, SigName), "version", r.Tag)
+	}
+	return sums, nil
+}
 
 // Newer reports whether tag (v1.2.3) is a later version than current (1.2.3).
 func Newer(current, tag string) bool {
@@ -154,12 +184,12 @@ func parseVersion(v string) ([3]int, bool) {
 }
 
 // Download saves the release executable to path after checking it against
-// SHA256SUMS.txt. progress receives the bytes written and the total (-1 when
-// unknown). On any failure path is removed.
+// the signed SHA256SUMS.txt. progress receives the bytes written and the
+// total (-1 when unknown). On any failure path is removed.
 func Download(ctx context.Context, r Release, path string, progress func(done, total int64)) (err error) {
-	sums, err := fetch(ctx, r.SumsURL, 64<<10)
+	sums, err := VerifiedSums(ctx, r)
 	if err != nil {
-		return msg.Wrap(msg.UpdateDownloadFailed, err)
+		return err
 	}
 	want, err := checksum(sums, ExeName)
 	if err != nil {

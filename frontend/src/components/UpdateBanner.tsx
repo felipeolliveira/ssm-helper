@@ -19,6 +19,22 @@ export default function UpdateBanner({info, activeTunnels, onDismiss}: {
 
     useEffect(() => events.onUpdateProgress(setProgress), [])
 
+    if (info?.blocked) {
+        // A release that may have been tampered with: no install and no download link
+        return (
+            <div className="sso-banners">
+                <div className="alert error update-banner">
+                    <Icon name="alert" size={18}/>
+                    <div className="sso-text">
+                        <strong>{t('update.blockedTitle', {version: info.latest})}</strong>
+                        <span>{t('update.blockedText')}</span>
+                    </div>
+                    <div className="spacer"/>
+                    <button className="btn ghost" onClick={onDismiss}>{t('update.understood')}</button>
+                </div>
+            </div>
+        )
+    }
     if (!info?.available) return null
 
     const apply = async () => {

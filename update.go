@@ -40,8 +40,12 @@ type UpdateInfo struct {
 	Current string `json:"current"`
 	Latest  string `json:"latest"`
 	URL     string `json:"url"`
-	// Available means Latest is newer than Current.
+	// Available means Latest is newer than Current and can be installed.
 	Available bool `json:"available"`
+	// Blocked means Latest is newer, but its signature did not match the keys
+	// built into the app: it is never installed and the user is told to
+	// contact support instead of downloading it.
+	Blocked bool `json:"blocked"`
 	// CheckedAt is empty until the first check finishes.
 	CheckedAt string `json:"checkedAt"`
 }
@@ -70,9 +74,11 @@ func (a *App) GetUpdateInfo() UpdateInfo {
 func (a *App) updateInfoLocked() UpdateInfo {
 	info := UpdateInfo{Enabled: a.updateEnabled(), Current: a.version}
 	if a.latest != nil {
+		newer := update.Newer(a.version, a.latest.Tag)
 		info.Latest = a.latest.Tag
 		info.URL = a.latest.URL
-		info.Available = update.Newer(a.version, a.latest.Tag)
+		info.Blocked = newer && a.blocked == a.latest.Tag
+		info.Available = newer && !info.Blocked
 		info.CheckedAt = a.checkedAt.Format(time.RFC3339)
 	}
 	return info
@@ -89,6 +95,13 @@ func (a *App) CheckUpdate() (UpdateInfo, error) {
 	if err != nil {
 		return a.GetUpdateInfo(), err
 	}
+	// A release whose signature does not match is never offered. Other
+	// failures (network) are left to the update itself.
+	if update.Newer(a.version, r.Tag) && r.Ready() {
+		if _, err := update.VerifiedSums(ctx, r); errors.Is(err, msg.Err(msg.UpdateSignatureInvalid)) {
+			a.block(r.Tag, err)
+		}
+	}
 	a.mu.Lock()
 	notify := update.Newer(a.version, r.Tag) && a.notified != r.Tag
 	if notify {
@@ -98,10 +111,24 @@ func (a *App) CheckUpdate() (UpdateInfo, error) {
 	info := a.updateInfoLocked()
 	a.mu.Unlock()
 	if notify {
-		a.logf("update", msg.New(msg.UpdateAvailable, "version", r.Tag))
+		if info.Available {
+			a.logf("update", msg.New(msg.UpdateAvailable, "version", r.Tag))
+		}
 		wruntime.EventsEmit(a.ctx, eventUpdateAvailable, info)
 	}
 	return info, nil
+}
+
+// block keeps a release with a bad signature from being offered again in
+// this run and records why, for the log file and the troubleshooting file.
+func (a *App) block(tag string, err error) {
+	a.mu.Lock()
+	first := a.blocked != tag
+	a.blocked = tag
+	a.mu.Unlock()
+	if first {
+		a.logf("update", msg.From(err))
+	}
 }
 
 // checkUpdatesLoop checks shortly after startup and then every few hours,
@@ -153,6 +180,12 @@ func (a *App) ApplyUpdate() error {
 	if busy {
 		return nil
 	}
+	if r != nil && a.GetUpdateInfo().Blocked {
+		a.mu.Lock()
+		a.applyingUpdate = false
+		a.mu.Unlock()
+		return msg.Err(msg.UpdateSignatureInvalid, "version", r.Tag)
+	}
 	if r == nil || !update.Newer(a.version, r.Tag) {
 		if r != nil {
 			a.mu.Lock()
@@ -181,6 +214,11 @@ func (a *App) ApplyUpdate() error {
 	err = update.Download(a.ctx, *r, newPath, func(done, total int64) {
 		wruntime.EventsEmit(a.ctx, eventUpdateProgress, UpdateProgress{Done: done, Total: total})
 	})
+	if errors.Is(err, msg.Err(msg.UpdateSignatureInvalid)) {
+		a.block(r.Tag, err)
+		wruntime.EventsEmit(a.ctx, eventUpdateAvailable, a.GetUpdateInfo())
+		return err
+	}
 	if err != nil {
 		a.logf("update", msg.From(err))
 		return err
