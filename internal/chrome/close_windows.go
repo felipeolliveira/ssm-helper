@@ -12,13 +12,13 @@ import (
 )
 
 // closeProcess asks Chrome to close its windows, as clicking X would.
-func closeProcess(p *os.Process) {
-	taskkill("/PID", strconv.Itoa(p.Pid))
+func closeProcess(pid int) {
+	taskkill("/PID", strconv.Itoa(pid))
 }
 
 // killProcess ends Chrome and its child processes.
-func killProcess(p *os.Process) {
-	taskkill("/PID", strconv.Itoa(p.Pid), "/T", "/F")
+func killProcess(pid int) {
+	taskkill("/PID", strconv.Itoa(pid), "/T", "/F")
 }
 
 func taskkill(args ...string) {
