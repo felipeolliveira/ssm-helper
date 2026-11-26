@@ -3,11 +3,13 @@ package chrome
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -71,13 +73,13 @@ func TestClearClosesTrackedChrome(t *testing.T) {
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	tr.track(dir, "web", cmd)
+	tr.track(dir, "web", cmd.Process.Pid, func() { cmd.Wait() })
 	// A second launch while the first runs hands off and exits; the first stays tracked
 	second := exec.Command("true")
 	if err := second.Start(); err != nil {
 		t.Fatal(err)
 	}
-	tr.track(dir, "web", second)
+	tr.track(dir, "web", second.Process.Pid, func() { second.Wait() })
 	if !tr.Running(target, root) {
 		t.Fatal("Running = false")
 	}
@@ -156,7 +158,7 @@ func TestCloseAndOpen(t *testing.T) {
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	tr.track(ProfileDir(target, root), "qa", cmd)
+	tr.track(ProfileDir(target, root), "qa", cmd.Process.Pid, func() { cmd.Wait() })
 	if got := <-changes; !slices.Equal(got, []string{"qa"}) {
 		t.Fatalf("open after launch = %v", got)
 	}
@@ -171,5 +173,117 @@ func TestCloseAndOpen(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("no change after Close")
+	}
+}
+
+func TestIsBrowserFor(t *testing.T) {
+	dir := filepath.Join("data", "chrome-qa")
+	cases := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"main process", []string{"chrome", "--user-data-dir=" + dir, "--no-first-run", "https://qa"}, true},
+		{"quoted value", []string{"chrome", `--user-data-dir="` + dir + `"`}, true},
+		{"not clean", []string{"chrome", "--user-data-dir=" + dir + string(filepath.Separator)}, true},
+		{"renderer", []string{"chrome", "--type=renderer", "--user-data-dir=" + dir}, false},
+		{"other profile", []string{"chrome", "--user-data-dir=" + dir + "-2"}, false},
+		{"default profile", []string{"chrome", "https://qa"}, false},
+	}
+	for _, c := range cases {
+		if got := isBrowserFor(c.args, dir); got != c.want {
+			t.Errorf("%s: isBrowserFor = %v, want %v", c.name, got, c.want)
+		}
+	}
+	if pathsIgnoreCase && !isBrowserFor([]string{"chrome", "--user-data-dir=" + strings.ToUpper(dir)}, dir) {
+		t.Error("paths differing in case should match on Windows")
+	}
+}
+
+func TestProfileDirs(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"chrome-qa", "chrome-web", "chrome-qa" + deletingSuffix + "1", "sso-cache"} {
+		os.MkdirAll(filepath.Join(root, name), 0o700)
+	}
+	want := map[string]string{filepath.Join(root, "chrome-qa"): "qa", filepath.Join(root, "chrome-web"): "web"}
+	if got := ProfileDirs(root); !maps.Equal(got, want) {
+		t.Errorf("ProfileDirs = %v, want %v", got, want)
+	}
+}
+
+// TestHelperProcess stands in for a Chrome opened outside the tracker: it
+// sleeps with --user-data-dir in its command line.
+func TestHelperProcess(t *testing.T) {
+	if os.Getenv("CHROME_TEST_HELPER") != "1" {
+		return
+	}
+	time.Sleep(30 * time.Second)
+	os.Exit(0)
+}
+
+func TestAdoptRunningChrome(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the search on Windows looks for chrome.exe")
+	}
+	root := t.TempDir()
+	target := env.Target{Name: "web", ChromeProfile: "qa"}
+	dir := ProfileDir(target, root)
+	writeProfile(t, dir)
+
+	helper := exec.Command(os.Args[0], "-test.run=^TestHelperProcess$", "--", "--user-data-dir="+dir)
+	helper.Env = append(os.Environ(), "CHROME_TEST_HELPER=1")
+	if err := helper.Start(); err != nil {
+		t.Fatal(err)
+	}
+	// Reaped here, as Chrome would be by whoever started it
+	exited := make(chan struct{})
+	go func() { helper.Wait(); close(exited) }()
+	defer helper.Process.Kill()
+
+	changes := make(chan []string, 4)
+	var tr *Tracker
+	tr = NewTracker(func() { changes <- tr.Open() })
+	tr.Adopt(ProfileDirs(root))
+	if got := <-changes; !slices.Equal(got, []string{"qa"}) {
+		t.Fatalf("open after Adopt = %v", got)
+	}
+
+	// Clear finds it, closes it and deletes the folder
+	closed, err := tr.Clear(target, root)
+	if err != nil || !closed {
+		t.Fatalf("Clear = %v, %v", closed, err)
+	}
+	select {
+	case <-exited:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the running Chrome was not closed")
+	}
+	if _, err := os.Stat(dir); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("profile folder still there: %v", err)
+	}
+}
+
+func TestCloseFindsChromeNotTracked(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the search on Windows looks for chrome.exe")
+	}
+	root := t.TempDir()
+	target := env.Target{Name: "web"}
+	helper := exec.Command(os.Args[0], "-test.run=^TestHelperProcess$", "--", "--user-data-dir="+ProfileDir(target, root))
+	helper.Env = append(os.Environ(), "CHROME_TEST_HELPER=1")
+	if err := helper.Start(); err != nil {
+		t.Fatal(err)
+	}
+	exited := make(chan struct{})
+	go func() { helper.Wait(); close(exited) }()
+	defer helper.Process.Kill()
+
+	if closed, err := NewTracker(nil).Close(target, root); err != nil || !closed {
+		t.Fatalf("Close = %v, %v", closed, err)
+	}
+	select {
+	case <-exited:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the running Chrome was not closed")
 	}
 }

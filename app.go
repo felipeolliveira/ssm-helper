@@ -217,6 +217,8 @@ func (a *App) loadSettings() {
 
 func (a *App) startupHook(ctx context.Context) {
 	a.ctx = ctx
+	// Chrome windows left open from before a restart get Close Chrome and Clear too
+	go a.chrome.Adopt(chrome.ProfileDirs(a.dataDir))
 }
 
 // shutdown closes every tunnel when the window closes.
@@ -563,14 +565,14 @@ func (a *App) OpenChrome(targetName string) error {
 	return a.openChrome(t)
 }
 
-// OpenChromeProfiles lists the Chrome profiles with a window the app opened;
-// changes arrive as chrome:open events.
+// OpenChromeProfiles lists the Chrome profiles with a known window (opened by
+// the app or found running at startup); changes arrive as chrome:open events.
 func (a *App) OpenChromeProfiles() []string {
 	return a.chrome.Open()
 }
 
-// CloseChrome closes the Chrome window the app opened for the target's
-// profile. A window opened before the app restarted is not known to it.
+// CloseChrome closes the Chrome window of the target's profile, including one
+// opened before the app restarted.
 func (a *App) CloseChrome(targetName string) error {
 	current := a.currentEnv()
 	if current == nil {
