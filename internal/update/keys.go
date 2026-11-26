@@ -9,6 +9,6 @@ package update
 //
 // Generate them with: go run ./tools/updatekey generate -out <name>
 var publicKeys = []string{
-	"8E7uxXxehe6a0rnys1eUQUlRnK8zH7unHSNbcpO3nhA=", // primary
-	"2+9RXXD2K42XPnvZBi2ecPs9y9rInrrU37Y9O3+JJ+c=", // backup
+	"K/4kQ6S5OhAmax81hAUcZZQ3ALLiWLdjXXf2a4z1Gb8=", // primary
+	"dpXRa+8rDePot7ltyHwAu7qhuJdFWMuatGsAmcKhAmk=", // backup
 }
