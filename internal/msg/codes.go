@@ -112,6 +112,16 @@ const (
 	DataDirNotProtected = "DATA_DIR_NOT_PROTECTED" // dir; detail
 	DataLegacyDirUnused = "DATA_LEGACY_DIR_UNUSED" // legacy, dir
 
+	// Updates from the GitHub releases
+	UpdateAvailable        = "UPDATE_AVAILABLE"         // version
+	UpdateCheckFailed      = "UPDATE_CHECK_FAILED"      // detail
+	UpdateDownloadFailed   = "UPDATE_DOWNLOAD_FAILED"   // detail
+	UpdateChecksumMismatch = "UPDATE_CHECKSUM_MISMATCH" // detail
+	UpdateApplyFailed      = "UPDATE_APPLY_FAILED"      // detail
+	UpdateNotReady         = "UPDATE_NOT_READY"         // version
+	UpdateRestarting       = "UPDATE_RESTARTING"        // version
+	UpdateCompleted        = "UPDATE_COMPLETED"         // version
+
 	// Log files (ssm-helper-data/logs)
 	LogFileWriteFailed = "LOG_FILE_WRITE_FAILED" // dir; detail
 	LogDirOpenFailed   = "LOG_DIR_OPEN_FAILED"   // dir; detail

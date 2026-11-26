@@ -7,7 +7,11 @@ import {env} from '../models';
 
 export function About():Promise<main.AboutInfo>;
 
+export function ApplyUpdate():Promise<void>;
+
 export function CancelLogin(arg1:string):Promise<void>;
+
+export function CheckUpdate():Promise<main.UpdateInfo>;
 
 export function ClearChromeProfile(arg1:string):Promise<void>;
 
@@ -24,6 +28,8 @@ export function GetAppearance():Promise<main.AppearanceState>;
 export function GetEnv():Promise<main.EnvState>;
 
 export function GetPreferences():Promise<main.Preferences>;
+
+export function GetUpdateInfo():Promise<main.UpdateInfo>;
 
 export function ListEnvs():Promise<main.EnvList>;
 
@@ -48,6 +54,8 @@ export function SaveEnv(arg1:env.Env):Promise<main.SaveResult>;
 export function SaveTroubleshooting():Promise<string>;
 
 export function SelectEnv(arg1:string):Promise<main.EnvState>;
+
+export function SetCheckUpdates(arg1:boolean):Promise<void>;
 
 export function SetHideSensitive(arg1:boolean):Promise<void>;
 

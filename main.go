@@ -10,6 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
+	"github.com/felipeolliveira/ssm-helper/internal/msg"
 	"github.com/felipeolliveira/ssm-helper/internal/tunnel"
 )
 
@@ -23,12 +24,18 @@ func main() {
 		return
 	}
 
+	updated := afterUpdate(os.Args[1:])
+	go removeOldExecutable()
+
 	dir, dataDir, err := defaultPaths()
 	if err != nil {
 		println("Error:", err.Error())
 		os.Exit(1)
 	}
 	app := NewApp(dir, dataDir)
+	if updated {
+		app.note("update", msg.New(msg.UpdateCompleted, "version", app.version))
+	}
 
 	err = wails.Run(&options.App{
 		Title:     "SSM Helper",

@@ -44,7 +44,7 @@ func TestLoadLegacyFile(t *testing.T) {
 		t.Fatalf("problems=%v source=%v err=%v", problems, source, err)
 	}
 	teal := s.Appearance.ActivePalette()
-	if s.HideSensitive || !s.OpenChromeOnConnect {
+	if s.HideSensitive || !s.OpenChromeOnConnect || !s.CheckUpdates {
 		t.Errorf("legacy file should use the default preferences: %+v", s)
 	}
 	if s.ActiveEnv != "qa" || teal.Name != "teal" || teal.Colors["bgDeep"] != "#07100f" || teal.Colors["primary600"] != "#14b8a6" {

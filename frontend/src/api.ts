@@ -91,7 +91,20 @@ export type Preferences = {
     language: string
     hideSensitive: boolean
     openChromeOnConnect: boolean
+    checkUpdates: boolean
 }
+
+export type UpdateInfo = {
+    // false in builds that are not releases
+    enabled: boolean
+    current: string
+    latest: string
+    url: string
+    available: boolean
+    checkedAt: string
+}
+
+export type UpdateProgress = {done: number, total: number}
 
 // Version of the program and of what it is built with (About screen)
 export type AboutInfo = {
@@ -210,11 +223,15 @@ export const api = {
     saveAppearance: async (a: Appearance) => ((await App.SaveAppearance(settings.Appearance.createFrom(a))) ?? []) as Message[],
     getPreferences: async (): Promise<Preferences> => {
         const p = await App.GetPreferences()
-        return {language: p.language ?? '', hideSensitive: !!p.hideSensitive, openChromeOnConnect: !!p.openChromeOnConnect}
+        return {language: p.language ?? '', hideSensitive: !!p.hideSensitive, openChromeOnConnect: !!p.openChromeOnConnect, checkUpdates: !!p.checkUpdates}
     },
     setLanguage: (lang: string) => App.SetLanguage(lang),
     setHideSensitive: (hide: boolean) => App.SetHideSensitive(hide),
     setOpenChromeOnConnect: (open: boolean) => App.SetOpenChromeOnConnect(open),
+    setCheckUpdates: (check: boolean) => App.SetCheckUpdates(check),
+    getUpdateInfo: async (): Promise<UpdateInfo> => ({...(await App.GetUpdateInfo())}),
+    checkUpdate: async (): Promise<UpdateInfo> => ({...(await App.CheckUpdate())}),
+    applyUpdate: () => App.ApplyUpdate(),
     startupMessages: async () => ((await App.StartupMessages()) ?? []) as LogEntry[],
     profileStatuses: async () => ((await App.ProfileStatuses()) ?? []) as ProfileStatus[],
     login: (profile: string) => App.Login(profile),
@@ -242,6 +259,8 @@ export const events = {
     onTunnelState: (cb: (s: TunnelState) => void) => EventsOn('tunnel:state', cb),
     onLog: (cb: (e: LogEntry) => void) => EventsOn('log', cb),
     onSSOCode: (cb: (c: SSOCode) => void) => EventsOn('sso:code', cb),
+    onUpdateAvailable: (cb: (info: UpdateInfo) => void) => EventsOn('update:available', cb),
+    onUpdateProgress: (cb: (p: UpdateProgress) => void) => EventsOn('update:progress', cb),
     // Chrome profiles with a window the app opened
     onChromeOpen: (cb: (profiles: string[]) => void) => EventsOn('chrome:open', p => cb(p ?? [])),
 }

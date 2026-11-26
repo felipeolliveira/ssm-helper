@@ -185,6 +185,7 @@ Holds the app preferences, which do not belong to an environment. The app create
   "language": "en",
   "hideSensitive": false,
   "openChromeOnConnect": true,
+  "checkUpdates": true,
   "appearance": {
     "palette": "teal",
     "palettes": {
@@ -203,6 +204,7 @@ Holds the app preferences, which do not belong to an environment. The app create
 | `language` | Screen language: `pt-BR` or `en`. Empty follows the Windows language |
 | `hideSensitive` | `true` when privacy mode (eye) is on. Default: `false` |
 | `openChromeOnConnect` | The **Open Chrome on connect** switch on the Targets screen. Default: `true` |
+| `checkUpdates` | The **Check for updates automatically** switch on the About screen. Default: `true` |
 | `appearance.palette` | Active palette: `ssm-dark`, `ssm-light` or the name of a palette in `palettes` |
 | `appearance.palettes.<name>.<color>` | Color as `#rgb`, `#rrggbb` or `#rrggbbaa`. The names `ssm-dark` and `ssm-light` are reserved |
 
@@ -267,6 +269,16 @@ ssm-helper\
 The app's data lives only in this folder, nothing in `%APPDATA%` or `%LOCALAPPDATA%`. The installed Chrome and Windows itself keep their own records, as with any program.
 
 `ssm-helper-data` holds the SSO token and the application cookies. That is why, on startup, the app restricts that folder to your Windows user (and SYSTEM), without inheriting the permissions of the folder the app is in: other accounts on the machine cannot read it, even if the app folder is shared. When that restriction cannot be applied (for example on a FAT32 USB drive or a network folder), the Log says so. Even so, treat the app folder as personal data: do not send it to anyone, since copying the folder takes the login along. To start from scratch, delete `ssm-helper-data` (the app asks for a new SSO login and the Chrome profiles start empty); to only force a new login, delete `ssm-helper-data\sso-cache`.
+
+## Updates
+
+Builds published on the Releases page look for a newer release on GitHub 10 seconds after opening and every 12 hours, while **Check for updates automatically** (About screen) is on. **Check now**, on the same screen, looks right away. When there is a newer version, a bar at the top of the window offers:
+
+- **What's new**: opens the release page;
+- **Update and restart**: downloads `ssm-helper.exe` from the release, checks it against the release's `SHA256SUMS.txt`, puts it in place of the current one and restarts the app. If tunnels are connected, it asks first, since they close with the app. The previous executable is kept as `ssm-helper.exe.old` and deleted on the next start;
+- **Later**: hides the bar until the app opens again.
+
+Files are only downloaded over HTTPS from GitHub's release hosts, redirects included, and the executable is capped at 200 MB. If the download, the checksum or the replacement fails, nothing changes and the bar offers **Download manually**. The check uses the GitHub API without a token and only follows a proxy set in the `HTTPS_PROXY` variable, not the Windows proxy settings: on a network that requires a proxy, the check fails (the Log says so) and the update has to be downloaded by hand. Builds made locally (`make build`) never look for updates.
 
 ## Upgrading from earlier versions
 
