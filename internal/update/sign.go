@@ -15,14 +15,18 @@ const SigName = SumsName + ".sig"
 // anything else signed with the same key.
 const signContext = "ssm-helper update checksums v1\n"
 
-// SignedMessage is what is signed: the context followed by SHA256SUMS.txt.
-func SignedMessage(sums []byte) []byte {
-	return append([]byte(signContext), sums...)
+// SignedMessage is what is signed: the context, the release tag and
+// SHA256SUMS.txt. With the tag in it, the files of an older release cannot be
+// published again under a newer tag to roll every copy back to that version.
+func SignedMessage(tag string, sums []byte) []byte {
+	msg := []byte(signContext + "version " + tag + "\n")
+	return append(msg, sums...)
 }
 
-// Sign returns the signature of sums, base64 encoded, as written to SigName.
-func Sign(key ed25519.PrivateKey, sums []byte) string {
-	return base64.StdEncoding.EncodeToString(ed25519.Sign(key, SignedMessage(sums)))
+// Sign returns the signature of the checksums of the release tag, base64
+// encoded, as written to SigName.
+func Sign(key ed25519.PrivateKey, tag string, sums []byte) string {
+	return base64.StdEncoding.EncodeToString(ed25519.Sign(key, SignedMessage(tag, sums)))
 }
 
 // ParsePrivateKey reads a key written by "updatekey generate": the base64 seed.
@@ -62,13 +66,14 @@ func PublicKeys() ([]ed25519.PublicKey, error) {
 	return keys, nil
 }
 
-// Verify checks sig (as written to SigName) against sums with any of keys.
-func Verify(keys []ed25519.PublicKey, sums []byte, sig string) bool {
+// Verify checks sig (as written to SigName) against the checksums of the
+// release tag with any of keys.
+func Verify(keys []ed25519.PublicKey, tag string, sums []byte, sig string) bool {
 	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(sig))
 	if err != nil || len(raw) != ed25519.SignatureSize {
 		return false
 	}
-	message := SignedMessage(sums)
+	message := SignedMessage(tag, sums)
 	for _, key := range keys {
 		if ed25519.Verify(key, message, raw) {
 			return true

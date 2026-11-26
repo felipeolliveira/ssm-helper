@@ -62,7 +62,7 @@ func trustTestKey(t *testing.T) {
 // signed with testKey.
 func fakeGitHub(t *testing.T, exe []byte, sums string) *httptest.Server {
 	t.Helper()
-	return fakeGitHubSigned(t, exe, sums, Sign(testKey, []byte(sums)))
+	return fakeGitHubSigned(t, exe, sums, Sign(testKey, "v1.4.0", []byte(sums)))
 }
 
 // fakeGitHubSigned serves the release with the given signature; an empty one
@@ -254,7 +254,7 @@ func TestSignatureRejected(t *testing.T) {
 	sums := sumOf(exe) + "  ssm-helper.exe\n"
 	// Signed with a key the app does not know, as after the release files were replaced
 	_, other, _ := ed25519.GenerateKey(rand.Reader)
-	fakeGitHubSigned(t, exe, sums, Sign(other, []byte(sums)))
+	fakeGitHubSigned(t, exe, sums, Sign(other, "v1.4.0", []byte(sums)))
 	r, err := Latest(context.Background(), "owner/app")
 	if err != nil {
 		t.Fatal(err)
@@ -291,18 +291,22 @@ func TestSignVerify(t *testing.T) {
 	sums := []byte("abc  ssm-helper.exe\n")
 
 	for name, key := range map[string]ed25519.PrivateKey{"primary": primary, "backup": backup} {
-		if !Verify(trusted, sums, Sign(key, sums)+"\n") {
+		if !Verify(trusted, "v1.4.0", sums, Sign(key, "v1.4.0", sums)+"\n") {
 			t.Errorf("signature of the %s key rejected", name)
 		}
 	}
-	if Verify(trusted, []byte("changed"), Sign(primary, sums)) {
+	if Verify(trusted, "v1.4.0", []byte("changed"), Sign(primary, "v1.4.0", sums)) {
 		t.Error("signature accepted for other content")
 	}
 	// A plain ed25519 signature of the file, without the context, is not accepted
-	if Verify(trusted, sums, base64.StdEncoding.EncodeToString(ed25519.Sign(primary, sums))) {
+	// The files of an older release published again under a newer tag
+	if Verify(trusted, "v9.9.9", sums, Sign(primary, "v1.4.0", sums)) {
+		t.Error("signature of v1.4.0 accepted for v9.9.9")
+	}
+	if Verify(trusted, "v1.4.0", sums, base64.StdEncoding.EncodeToString(ed25519.Sign(primary, sums))) {
 		t.Error("signature without the context accepted")
 	}
-	if Verify(trusted, sums, "not base64!") {
+	if Verify(trusted, "v1.4.0", sums, "not base64!") {
 		t.Error("garbage accepted")
 	}
 
@@ -325,5 +329,19 @@ func TestPublicKeysSet(t *testing.T) {
 	}
 	if len(publicKeys) != 2 {
 		t.Errorf("keys.go has %d public keys, want 2 (primary and backup)", len(publicKeys))
+	}
+}
+
+func TestOlderReleaseUnderNewerTag(t *testing.T) {
+	// The genuine files of v1.3.5, published again as v1.4.0
+	exe := []byte("older executable")
+	sums := sumOf(exe) + "  ssm-helper.exe\n"
+	fakeGitHubSigned(t, exe, sums, Sign(testKey, "v1.3.5", []byte(sums)))
+	r, err := Latest(context.Background(), "owner/app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := VerifiedSums(context.Background(), r); !errors.Is(err, msg.Err(msg.UpdateSignatureInvalid)) {
+		t.Fatalf("VerifiedSums = %v, want %s", err, msg.UpdateSignatureInvalid)
 	}
 }

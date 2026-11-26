@@ -124,16 +124,17 @@ jobs:
         working-directory: build/bin
         run: sha256sum ssm-helper.exe > SHA256SUMS.txt && cat SHA256SUMS.txt
 
-      # The app only installs an update whose SHA256SUMS.txt is signed with a
-      # key it knows (internal/update/keys.go). The private key lives only in
-      # this secret; verifying with the built-in keys catches a secret that
-      # does not match them before anything is published.
+      # The app only installs an update whose SHA256SUMS.txt is signed, together
+      # with the tag, with a key it knows (internal/update/keys.go). The tag in
+      # the signature keeps the files of an older release from being published
+      # again under a newer tag. Verifying with the built-in keys catches a
+      # secret that does not match them before anything is published.
       - name: Sign checksums
         env:
           UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: |
-          go run ./tools/updatekey sign -key-env UPDATE_SIGNING_KEY build/bin/SHA256SUMS.txt
-          go run ./tools/updatekey verify build/bin/SHA256SUMS.txt
+          go run ./tools/updatekey sign -key-env UPDATE_SIGNING_KEY -version "$TAG" build/bin/SHA256SUMS.txt
+          go run ./tools/updatekey verify -version "$TAG" build/bin/SHA256SUMS.txt
 
       - name: Keep the build as an artifact
         uses: actions/upload-artifact@v7

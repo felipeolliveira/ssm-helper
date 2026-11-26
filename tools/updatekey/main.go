@@ -3,9 +3,9 @@
 //
 //	go run ./tools/updatekey generate -out primary
 //	    writes primary.key (private, keep it secret) and primary.pub
-//	go run ./tools/updatekey sign -key-env UPDATE_SIGNING_KEY build/bin/SHA256SUMS.txt
-//	    writes build/bin/SHA256SUMS.txt.sig (used by the release workflow)
-//	go run ./tools/updatekey verify build/bin/SHA256SUMS.txt
+//	go run ./tools/updatekey sign -key-env UPDATE_SIGNING_KEY -version v1.4.0 build/bin/SHA256SUMS.txt
+//	    writes build/bin/SHA256SUMS.txt.sig for that release (used by the release workflow)
+//	go run ./tools/updatekey verify -version v1.4.0 build/bin/SHA256SUMS.txt
 //	    checks the .sig with the public keys built into the app
 package main
 
@@ -43,7 +43,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: updatekey generate -out <name> | sign -key-env <VAR> <file> | verify <file>")
+	fmt.Fprintln(os.Stderr, "usage: updatekey generate -out <name> | sign -key-env <VAR> -version <tag> <file> | verify -version <tag> <file>")
 	os.Exit(2)
 }
 
@@ -90,9 +90,13 @@ func writeNew(path, content string, mode os.FileMode) error {
 func sign(args []string) error {
 	fs := flag.NewFlagSet("sign", flag.ExitOnError)
 	keyEnv := fs.String("key-env", "UPDATE_SIGNING_KEY", "environment variable with the private key")
+	version := fs.String("version", "", "tag of the release (v1.2.3), part of what is signed")
 	fs.Parse(args)
 	if fs.NArg() != 1 {
 		return errors.New("sign takes one file")
+	}
+	if *version == "" {
+		return errors.New("-version is required")
 	}
 	value := os.Getenv(*keyEnv)
 	if value == "" {
@@ -106,34 +110,40 @@ func sign(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(fs.Arg(0)+".sig", []byte(update.Sign(key, data)+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(fs.Arg(0)+".sig", []byte(update.Sign(key, *version, data)+"\n"), 0o644); err != nil {
 		return err
 	}
-	fmt.Printf("signed %s\n", fs.Arg(0))
+	fmt.Printf("signed %s for %s\n", fs.Arg(0), *version)
 	return nil
 }
 
 // verify checks <file>.sig with the public keys built into the app, so a
 // release signed with a key the app does not know fails before publishing.
 func verify(args []string) error {
-	if len(args) != 1 {
+	fs := flag.NewFlagSet("verify", flag.ExitOnError)
+	version := fs.String("version", "", "tag of the release (v1.2.3) the signature must be for")
+	fs.Parse(args)
+	if fs.NArg() != 1 {
 		return errors.New("verify takes one file")
+	}
+	if *version == "" {
+		return errors.New("-version is required")
 	}
 	keys, err := update.PublicKeys()
 	if err != nil {
 		return err
 	}
-	data, err := os.ReadFile(args[0])
+	data, err := os.ReadFile(fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	sig, err := os.ReadFile(args[0] + ".sig")
+	sig, err := os.ReadFile(fs.Arg(0) + ".sig")
 	if err != nil {
 		return err
 	}
-	if !update.Verify(keys, data, string(sig)) {
-		return fmt.Errorf("%s.sig does not match any public key built into the app", args[0])
+	if !update.Verify(keys, *version, data, string(sig)) {
+		return fmt.Errorf("%s.sig is not a signature of %s by a public key built into the app", fs.Arg(0), *version)
 	}
-	fmt.Printf("%s.sig is valid\n", args[0])
+	fmt.Printf("%s.sig is valid for %s\n", fs.Arg(0), *version)
 	return nil
 }

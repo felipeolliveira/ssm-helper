@@ -145,9 +145,9 @@ func VerifiedSums(ctx context.Context, r Release) ([]byte, error) {
 	if err != nil {
 		return nil, msg.Wrap(msg.UpdateDownloadFailed, err)
 	}
-	if !Verify(trusted, sums, string(sig)) {
+	if !Verify(trusted, r.Tag, sums, string(sig)) {
 		return nil, msg.Wrap(msg.UpdateSignatureInvalid,
-			fmt.Errorf("%s does not match the signature in %s", SumsName, SigName), "version", r.Tag)
+			fmt.Errorf("%s of %s does not match the signature in %s", SumsName, r.Tag, SigName), "version", r.Tag)
 	}
 	return sums, nil
 }
