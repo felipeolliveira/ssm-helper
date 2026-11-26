@@ -31,13 +31,16 @@ type Settings struct {
 	// HideSensitive masks accounts, hosts and domains on screen.
 	HideSensitive bool `json:"hideSensitive"`
 	// OpenChromeOnConnect opens Chrome when a tunnel with domains or URLs is ready.
-	OpenChromeOnConnect bool       `json:"openChromeOnConnect"`
-	Appearance          Appearance `json:"appearance"`
+	OpenChromeOnConnect bool `json:"openChromeOnConnect"`
+	// CheckUpdates looks for a newer release on GitHub (release builds only).
+	CheckUpdates bool       `json:"checkUpdates"`
+	Appearance   Appearance `json:"appearance"`
 }
 
-// Default uses env.json, shows all data, opens Chrome on connect and uses the ssm-dark palette.
+// Default uses env.json, shows all data, opens Chrome on connect, checks
+// for updates and uses the ssm-dark palette.
 func Default() Settings {
-	return Settings{OpenChromeOnConnect: true, Appearance: DefaultAppearance()}
+	return Settings{OpenChromeOnConnect: true, CheckUpdates: true, Appearance: DefaultAppearance()}
 }
 
 // Source tells where Load read the settings from.
@@ -74,6 +77,7 @@ func Load(dir string) (Settings, []msg.Message, Source, error) {
 	s.Language = ValidLanguage(jsonfile.Field(root, "language"))
 	s.HideSensitive = jsonfile.Bool(root, "hideSensitive", s.HideSensitive)
 	s.OpenChromeOnConnect = jsonfile.Bool(root, "openChromeOnConnect", s.OpenChromeOnConnect)
+	s.CheckUpdates = jsonfile.Bool(root, "checkUpdates", s.CheckUpdates)
 	appearance, problems := ParseAppearance(jsonfile.Lookup(root, "appearance"))
 	if len(problems) == 0 {
 		s.Appearance = appearance
@@ -113,6 +117,7 @@ func Save(dir string, s Settings) error {
 	root.Content = append(root.Content,
 		jsonfile.Key("hideSensitive"), jsonfile.BoolValue(s.HideSensitive),
 		jsonfile.Key("openChromeOnConnect"), jsonfile.BoolValue(s.OpenChromeOnConnect),
+		jsonfile.Key("checkUpdates"), jsonfile.BoolValue(s.CheckUpdates),
 		jsonfile.Key("appearance"), marshalAppearance(s.Appearance),
 	)
 	data, err := jsonfile.Encode(root)

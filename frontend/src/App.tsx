@@ -13,6 +13,7 @@ import {
     toMessage,
     TunnelState,
     tunnelKey,
+    UpdateInfo,
 } from './api'
 import {activePalette, applyPalette} from './theme'
 import TargetsView from './views/TargetsView'
@@ -22,6 +23,7 @@ import PreferencesView from './views/PreferencesView'
 import AboutView from './views/AboutView'
 import LogPanel from './components/LogPanel'
 import SSOBanner from './components/SSOBanner'
+import UpdateBanner from './components/UpdateBanner'
 import EnvSwitcher from './components/EnvSwitcher'
 import NewEnvDialog from './components/NewEnvDialog'
 import {Icon, IconName} from './components/Icon'
@@ -41,6 +43,8 @@ export default function App() {
     const [profiles, setProfiles] = useState<ProfileStatus[]>([])
     const [logs, setLogs] = useState<LogEntry[]>([])
     const [ssoCodes, setSSOCodes] = useState<Record<string, SSOCode>>({})
+    const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+    const [updateDismissed, setUpdateDismissed] = useState(false)
     const [logOpen, setLogOpen] = useState(false)
     const [autoChrome, setAutoChrome] = useState(true)
     const [chromeOpen, setChromeOpen] = useState<string[]>([])
@@ -125,6 +129,11 @@ export default function App() {
             if (s.status === 'connected' || s.status === 'idle' || s.status === 'error') refreshEnvList()
         })
         const offLog = events.onLog(entry => addLogs([entry]))
+        api.getUpdateInfo().then(setUpdateInfo).catch(() => {})
+        const offUpdate = events.onUpdateAvailable(info => {
+            setUpdateInfo(info)
+            setUpdateDismissed(false)
+        })
         api.openChromeProfiles().then(setChromeOpen).catch(() => {})
         const offChrome = events.onChromeOpen(setChromeOpen)
         const offCode = events.onSSOCode(code => {
@@ -140,6 +149,7 @@ export default function App() {
             offState()
             offLog()
             offCode()
+            offUpdate()
             offChrome()
         }
     }, [reloadEnv, refreshProfiles, refreshEnvList, addLogs])
@@ -208,6 +218,13 @@ export default function App() {
             </aside>
 
             <main className="main">
+                {!updateDismissed && (
+                    <UpdateBanner
+                        info={updateInfo}
+                        activeTunnels={Object.values(tunnels).filter(t => t.status === 'connected').length}
+                        onDismiss={() => setUpdateDismissed(true)}
+                    />
+                )}
                 <SSOBanner codes={Object.values(ssoCodes)} onCancel={profile => api.cancelLogin(profile)}/>
                 {loadError && <div className="alert error">{tm(loadError)}</div>}
                 <div className="content">

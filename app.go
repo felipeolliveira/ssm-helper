@@ -25,6 +25,7 @@ import (
 	"github.com/felipeolliveira/ssm-helper/internal/settings"
 	"github.com/felipeolliveira/ssm-helper/internal/sso"
 	"github.com/felipeolliveira/ssm-helper/internal/tunnel"
+	"github.com/felipeolliveira/ssm-helper/internal/update"
 )
 
 // Tunnel statuses sent to the frontend
@@ -131,6 +132,12 @@ type App struct {
 	cancels  map[string]context.CancelFunc // pending connects and logins
 	startup  []LogEntry                    // messages from before the window opened
 	logError bool                          // a log file write failed and was reported
+
+	version        string          // of this build, from wails.json
+	latest         *update.Release // last release found on GitHub
+	checkedAt      time.Time
+	notified       string // release already announced
+	applyingUpdate bool
 }
 
 func NewApp(dir, dataDir string) *App {
@@ -157,6 +164,7 @@ func NewApp(dir, dataDir string) *App {
 		a.note("data", msg.New(msg.DataLegacyDirUnused, "legacy", legacy, "dir", a.dataDir))
 	}
 	a.loadSettings()
+	a.version = a.About().Version
 	return a
 }
 
@@ -217,6 +225,7 @@ func (a *App) loadSettings() {
 
 func (a *App) startupHook(ctx context.Context) {
 	a.ctx = ctx
+	go a.checkUpdatesLoop()
 }
 
 // shutdown closes every tunnel when the window closes.
@@ -373,6 +382,7 @@ type Preferences struct {
 	Language            string `json:"language"`
 	HideSensitive       bool   `json:"hideSensitive"`
 	OpenChromeOnConnect bool   `json:"openChromeOnConnect"`
+	CheckUpdates        bool   `json:"checkUpdates"`
 }
 
 // GetPreferences returns the screen options stored in ssm-helper.json.
@@ -383,6 +393,7 @@ func (a *App) GetPreferences() Preferences {
 		Language:            a.settings.Language,
 		HideSensitive:       a.settings.HideSensitive,
 		OpenChromeOnConnect: a.settings.OpenChromeOnConnect,
+		CheckUpdates:        a.settings.CheckUpdates,
 	}
 }
 

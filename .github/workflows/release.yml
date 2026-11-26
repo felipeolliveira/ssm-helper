@@ -92,12 +92,14 @@ jobs:
       # wails build turns off Go's VCS stamping, so the commit for the About
       # screen goes in through -X. commitModified is left out on purpose: the
       # wails.json edit above is the only change, and it is expected.
+      # channel=release turns on the update check: other builds carry the
+      # version of wails.json in the repository, which is not a release.
       - name: Build
         run: |
           COMMIT=$(git rev-parse HEAD)
           COMMIT_TIME=$(git log -1 --format=%cI)
           wails build -clean -platform windows/amd64 -trimpath \
-            -ldflags "-s -w -X main.commit=$COMMIT -X main.commitTime=$COMMIT_TIME"
+            -ldflags "-s -w -X main.commit=$COMMIT -X main.commitTime=$COMMIT_TIME -X main.channel=release"
 
       - name: Check the build
         shell: pwsh

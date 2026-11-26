@@ -6,8 +6,16 @@ export function About() {
   return window['go']['main']['App']['About']();
 }
 
+export function ApplyUpdate() {
+  return window['go']['main']['App']['ApplyUpdate']();
+}
+
 export function CancelLogin(arg1) {
   return window['go']['main']['App']['CancelLogin'](arg1);
+}
+
+export function CheckUpdate() {
+  return window['go']['main']['App']['CheckUpdate']();
 }
 
 export function ClearChromeProfile(arg1) {
@@ -40,6 +48,10 @@ export function GetEnv() {
 
 export function GetPreferences() {
   return window['go']['main']['App']['GetPreferences']();
+}
+
+export function GetUpdateInfo() {
+  return window['go']['main']['App']['GetUpdateInfo']();
 }
 
 export function ListEnvs() {
@@ -84,6 +96,10 @@ export function SaveEnv(arg1) {
 
 export function SelectEnv(arg1) {
   return window['go']['main']['App']['SelectEnv'](arg1);
+}
+
+export function SetCheckUpdates(arg1) {
+  return window['go']['main']['App']['SetCheckUpdates'](arg1);
 }
 
 export function SetHideSensitive(arg1) {

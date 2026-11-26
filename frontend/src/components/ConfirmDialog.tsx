@@ -2,12 +2,13 @@ import {ReactNode} from 'react'
 import {Icon, IconName} from './Icon'
 import {useI18n} from '../i18n'
 
-// Asks before a destructive action. Escape and a click outside cancel it.
-export default function ConfirmDialog({title, children, confirmLabel, confirmIcon, onConfirm, onCancel}: {
+// Asks before an action, destructive by default. Escape and a click outside cancel it.
+export default function ConfirmDialog({title, children, confirmLabel, confirmIcon, danger = true, onConfirm, onCancel}: {
     title: string
     children: ReactNode
     confirmLabel: string
     confirmIcon: IconName
+    danger?: boolean
     onConfirm: () => void
     onCancel: () => void
 }) {
@@ -23,7 +24,7 @@ export default function ConfirmDialog({title, children, confirmLabel, confirmIco
                 <div className="dialog-body">{children}</div>
                 <footer className="dialog-footer">
                     <button type="button" className="btn ghost" onClick={onCancel}>{t('common.cancel')}</button>
-                    <button type="button" className="btn danger" autoFocus onClick={onConfirm}>
+                    <button type="button" className={`btn ${danger ? 'danger' : 'primary'}`} autoFocus onClick={onConfirm}>
                         <Icon name={confirmIcon}/> {confirmLabel}
                     </button>
                 </footer>

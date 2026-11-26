@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react'
-import {AboutInfo, api, Message, toMessage} from '../api'
+import {AboutInfo, api, Message, toMessage, UpdateInfo} from '../api'
 import {Icon} from '../components/Icon'
 import {useI18n} from '../i18n'
 
@@ -8,10 +8,32 @@ export default function AboutView() {
     const [info, setInfo] = useState<AboutInfo | null>(null)
     const [error, setError] = useState<Message | null>(null)
     const [copied, setCopied] = useState(false)
+    const [update, setUpdate] = useState<UpdateInfo | null>(null)
+    const [checking, setChecking] = useState(false)
+    const [checkError, setCheckError] = useState<Message | null>(null)
+    const [autoCheck, setAutoCheck] = useState(true)
 
     useEffect(() => {
         api.about().then(setInfo).catch(err => setError(toMessage(err)))
+        api.getUpdateInfo().then(setUpdate).catch(() => {})
+        api.getPreferences().then(p => setAutoCheck(p.checkUpdates)).catch(() => {})
     }, [])
+
+    const checkNow = async () => {
+        setChecking(true)
+        setCheckError(null)
+        try {
+            setUpdate(await api.checkUpdate())
+        } catch (err) {
+            setCheckError(toMessage(err))
+        }
+        setChecking(false)
+    }
+
+    const toggleAutoCheck = (value: boolean) => {
+        setAutoCheck(value)
+        api.setCheckUpdates(value).catch(() => {})
+    }
 
     if (error) return <div className="alert error">{tm(error)}</div>
     if (!info) return <div className="empty">{t('about.loading')}</div>
@@ -80,6 +102,32 @@ export default function AboutView() {
                     </button>
                 )}
             </header>
+
+            <section className="card about-card">
+                <header className="page-header">
+                    <h2 className="spacer">{t('update.title')}</h2>
+                    {update?.enabled && (
+                        <button className="btn" onClick={checkNow} disabled={checking}>
+                            <Icon name="refresh"/> {checking ? t('update.checking') : t('update.checkNow')}
+                        </button>
+                    )}
+                </header>
+                <p className="muted">
+                    {!update ? t('about.loading')
+                        : !update.enabled ? t('update.devBuild')
+                            : update.available ? t('update.available', {version: update.latest})
+                                : update.checkedAt ? t('update.upToDate', {version: update.current})
+                                    : t('update.notChecked')}
+                </p>
+                {checkError && <div className="alert error">{tm(checkError)}</div>}
+                {update?.enabled && (
+                    <label className="switch">
+                        <input type="checkbox" checked={autoCheck} onChange={e => toggleAutoCheck(e.target.checked)}/>
+                        <span className="switch-track"/>
+                        <span>{t('update.autoCheck')}</span>
+                    </label>
+                )}
+            </section>
 
             {section(t('about.build'), build)}
             {section(t('about.components'), components)}

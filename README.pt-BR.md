@@ -185,6 +185,7 @@ Guarda as preferências do app, que não pertencem a um ambiente. O app cria e a
   "language": "pt-BR",
   "hideSensitive": false,
   "openChromeOnConnect": true,
+  "checkUpdates": true,
   "appearance": {
     "palette": "teal",
     "palettes": {
@@ -203,6 +204,7 @@ Guarda as preferências do app, que não pertencem a um ambiente. O app cria e a
 | `language` | Idioma das telas: `pt-BR` ou `en`. Vazio usa o idioma do Windows |
 | `hideSensitive` | `true` quando o modo de privacidade (olho) está ligado. Padrão: `false` |
 | `openChromeOnConnect` | Chave **Abrir o Chrome ao conectar**, da tela Targets. Padrão: `true` |
+| `checkUpdates` | Chave **Verificar atualizações automaticamente**, da tela Sobre. Padrão: `true` |
 | `appearance.palette` | Paleta ativa: `ssm-dark`, `ssm-light` ou o nome de uma paleta em `palettes` |
 | `appearance.palettes.<nome>.<cor>` | Cor em `#rgb`, `#rrggbb` ou `#rrggbbaa`. Os nomes `ssm-dark` e `ssm-light` são reservados |
 
@@ -267,6 +269,16 @@ ssm-helper\
 Os dados do app ficam só nessa pasta, nada em `%APPDATA%` ou `%LOCALAPPDATA%`. O Chrome instalado e o próprio Windows mantêm os registros deles, como em qualquer programa.
 
 O `ssm-helper-data` tem o token do SSO e os cookies das aplicações. Por isso, ao abrir, o app restringe essa pasta ao seu usuário do Windows (e ao SYSTEM), sem herdar as permissões da pasta onde o app está: outras contas da máquina não conseguem lê-la, mesmo que a pasta do app seja compartilhada. Se não for possível aplicar essa restrição (por exemplo, num pendrive FAT32 ou numa pasta de rede), o Log avisa. Mesmo assim, trate a pasta do app como dado pessoal: não a envie a ninguém, já que copiar a pasta leva junto o login. Para começar do zero, apague o `ssm-helper-data` (o app pede um novo login SSO e os perfis do Chrome começam vazios); para só forçar um novo login, apague o `ssm-helper-data\sso-cache`.
+
+## Atualizações
+
+Os builds publicados na página de versões procuram uma release mais nova no GitHub 10 segundos depois de abrir e a cada 12 horas, enquanto a chave **Verificar atualizações automaticamente** (tela Sobre) estiver ligada. O botão **Verificar agora**, na mesma tela, procura na hora. Quando há versão nova, uma faixa no topo da janela oferece:
+
+- **Ver novidades**: abre a página da release;
+- **Atualizar e reiniciar**: baixa o `ssm-helper.exe` da release, confere com o `SHA256SUMS.txt` da release, coloca no lugar do atual e reinicia o app. Se houver túneis conectados, pergunta antes, porque eles fecham junto com o app. O executável anterior fica como `ssm-helper.exe.old` e é apagado na abertura seguinte;
+- **Depois**: esconde a faixa até o app abrir de novo.
+
+Se o download, o checksum ou a troca falhar, nada muda e a faixa oferece **Baixar manualmente**. A verificação usa a API do GitHub sem token e só segue um proxy definido na variável `HTTPS_PROXY`, não a configuração de proxy do Windows: numa rede que exija proxy, a verificação falha (o Log avisa) e a atualização precisa ser baixada à mão. Builds feitos localmente (`make build`) nunca procuram atualizações.
 
 ## Atualizar de versões anteriores
 

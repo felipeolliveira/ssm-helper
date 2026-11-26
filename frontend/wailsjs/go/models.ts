@@ -314,6 +314,7 @@ export namespace main {
 	    language: string;
 	    hideSensitive: boolean;
 	    openChromeOnConnect: boolean;
+	    checkUpdates: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Preferences(source);
@@ -324,6 +325,7 @@ export namespace main {
 	        this.language = source["language"];
 	        this.hideSensitive = source["hideSensitive"];
 	        this.openChromeOnConnect = source["openChromeOnConnect"];
+	        this.checkUpdates = source["checkUpdates"];
 	    }
 	}
 	export class ProfileStatus {
@@ -409,6 +411,28 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+	export class UpdateInfo {
+	    enabled: boolean;
+	    current: string;
+	    latest: string;
+	    url: string;
+	    available: boolean;
+	    checkedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.current = source["current"];
+	        this.latest = source["latest"];
+	        this.url = source["url"];
+	        this.available = source["available"];
+	        this.checkedAt = source["checkedAt"];
+	    }
 	}
 
 }
