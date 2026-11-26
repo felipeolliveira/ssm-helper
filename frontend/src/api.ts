@@ -143,6 +143,8 @@ export type TunnelState = {
     target: string
     status: TunnelStatus
     message: Message
+    // when the tunnel became ready (RFC 3339), only while connected
+    connectedAt?: string
 }
 
 export type ProfileStatus = {

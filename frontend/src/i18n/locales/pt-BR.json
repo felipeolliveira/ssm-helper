@@ -64,6 +64,8 @@
       "closeChrome": "Fechar Chrome",
       "closeChromeHint": "Fecha a janela do Chrome do perfil deste target",
       "connectFirst": "Conecte primeiro",
+      "connectedFor": "Conectado há {duration}",
+      "lessThanMinute": "< 1 min",
       "actions": "Ações",
       "clearBrowserData": "Limpar dados do navegador",
       "clearingBrowserData": "Limpando os dados do navegador...",
