@@ -381,6 +381,7 @@ export namespace main {
 	    target: string;
 	    status: string;
 	    message: msg.Message;
+	    connectedAt?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new TunnelState(source);
@@ -392,6 +393,7 @@ export namespace main {
 	        this.target = source["target"];
 	        this.status = source["status"];
 	        this.message = this.convertValues(source["message"], msg.Message);
+	        this.connectedAt = source["connectedAt"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

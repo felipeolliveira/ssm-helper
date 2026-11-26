@@ -35,7 +35,7 @@ Depois disso, o app se atualiza sozinho (veja [Atualizações](#atualizações))
 
 ## Uso
 
-- **Targets**: um card por target. **Conectar** abre o túnel, fazendo o login SSO antes se a sessão tiver expirado. Se o túnel cair (tempo ocioso, troca de rede, suspensão), o app reconecta, em até 10 tentativas. Fechar o app fecha todos os túneis.
+- **Targets**: um card por target. **Conectar** abre o túnel, fazendo o login SSO antes se a sessão tiver expirado, e o card mostra há quanto tempo está conectado. Se o túnel cair (tempo ocioso, troca de rede, suspensão), o app reconecta, em até 10 tentativas. Fechar o app fecha todos os túneis.
 - **Perfis AWS**: conta, role e sessão SSO de cada perfil. **Login SSO** renova a sessão sem abrir túnel.
 - **Ambiente**: edita o ambiente ativo (veja [Ambientes](#ambientes)).
 - **Preferências**: idioma e paletas de cores.

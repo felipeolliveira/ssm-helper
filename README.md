@@ -35,7 +35,7 @@ After that, the app updates itself (see [Updates](#updates)). To move it to anot
 
 ## Usage
 
-- **Targets**: one card per target. **Connect** opens the tunnel, signing in to SSO first if the session expired. If a tunnel drops (idle timeout, network change, sleep), the app reconnects it, up to 10 attempts. Closing the app closes every tunnel.
+- **Targets**: one card per target. **Connect** opens the tunnel, signing in to SSO first if the session expired, and the card shows how long it has been connected. If a tunnel drops (idle timeout, network change, sleep), the app reconnects it, up to 10 attempts. Closing the app closes every tunnel.
 - **AWS profiles**: account, role and SSO session of each profile. **SSO login** renews a session without opening a tunnel.
 - **Environment**: edits the active environment (see [Environments](#environments)).
 - **Preferences**: language and color palettes.

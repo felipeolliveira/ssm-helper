@@ -1,10 +1,30 @@
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 import {api, Env, Message, ProfileStatus, Target, toMessage, TunnelState, TunnelStatus, tunnelKey} from '../api'
 import ActionsMenu from '../components/ActionsMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import {Icon} from '../components/Icon'
 import {Secret, useSecretText} from '../privacy'
 import {useI18n} from '../i18n'
+
+// now, refreshed every interval while active; null otherwise
+function useNow(active: boolean, interval = 30_000) {
+    const [now, setNow] = useState(() => Date.now())
+    useEffect(() => {
+        if (!active) return
+        setNow(Date.now())
+        const id = setInterval(() => setNow(Date.now()), interval)
+        return () => clearInterval(id)
+    }, [active, interval])
+    return now
+}
+
+// How long a tunnel has been up: "< 1 min", "12 min", "2 h 05 min".
+function formatUptime(ms: number, lessThanMinute: string) {
+    const minutes = Math.floor(ms / 60_000)
+    if (minutes < 1) return lessThanMinute
+    if (minutes < 60) return `${minutes} min`
+    return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')} min`
+}
 
 function linkToURL(link: string) {
     return /^https?:\/\//.test(link) ? link : `https://${link}`
@@ -80,6 +100,8 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome, chrom
     const status: TunnelStatus = state?.status ?? 'idle'
     const busy = status === 'connecting' || status === 'login'
     const connected = status === 'connected'
+    const connectedAt = connected && state?.connectedAt ? Date.parse(state.connectedAt) : NaN
+    const now = useNow(!Number.isNaN(connectedAt))
     const usesBrowser = target.dnsHosts.length > 0 || target.openUrls.length > 0
     const secretText = useSecretText()
     const hidden = secretText !== ''
@@ -112,8 +134,11 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome, chrom
                     </div>
                 </div>
                 <div className="card-header-end">
-                    <span className={`status-pill ${status}`}>
-                        <span className="dot"/>{t(`status.${status}`)}
+                    <span className={`status-pill ${status}`} title={Number.isNaN(connectedAt) ? undefined : new Date(connectedAt).toLocaleString()}>
+                        <span className="dot"/>
+                        {Number.isNaN(connectedAt)
+                            ? t(`status.${status}`)
+                            : t('targets.connectedFor', {duration: formatUptime(now - connectedAt, t('targets.lessThanMinute'))})}
                     </span>
                     {usesBrowser && (
                         <ActionsMenu label={t('targets.actions')} disabled={clearing} actions={[

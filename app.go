@@ -96,6 +96,9 @@ type TunnelState struct {
 	Target  string      `json:"target"`
 	Status  string      `json:"status"`
 	Message msg.Message `json:"message"`
+	// ConnectedAt is when the tunnel became ready (RFC 3339), only while
+	// connected; a reconnection starts it again.
+	ConnectedAt string `json:"connectedAt,omitempty"`
 }
 
 type ProfileStatus struct {
@@ -921,6 +924,9 @@ func (a *App) cancel(key string) {
 
 func (a *App) setState(envName, target, status string, m msg.Message) {
 	st := TunnelState{Env: envName, Target: target, Status: status, Message: m}
+	if status == StatusConnected {
+		st.ConnectedAt = time.Now().Format(time.RFC3339)
+	}
 	a.mu.Lock()
 	a.states[tunnelKey(envName, target)] = st
 	a.mu.Unlock()
