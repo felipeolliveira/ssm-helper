@@ -45,6 +45,8 @@ export function SaveAppearance(arg1:settings.Appearance):Promise<Array<msg.Messa
 
 export function SaveEnv(arg1:env.Env):Promise<main.SaveResult>;
 
+export function SaveTroubleshooting():Promise<string>;
+
 export function SelectEnv(arg1:string):Promise<main.EnvState>;
 
 export function SetHideSensitive(arg1:boolean):Promise<void>;

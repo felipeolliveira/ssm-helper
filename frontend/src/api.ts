@@ -196,6 +196,8 @@ export const api = {
     createEnv: async (req: NewEnvRequest) => normalizeState(await App.CreateEnv(main.NewEnvRequest.createFrom(req))),
     openAppFolder: () => App.OpenAppFolder(),
     openLogFolder: () => App.OpenLogFolder(),
+    // Resolves with the saved file, or '' when the user cancels
+    saveTroubleshooting: () => App.SaveTroubleshooting(),
     about: async (): Promise<AboutInfo> => ({...(await App.About())}),
     openURL: (url: string) => App.OpenURL(url),
     getAppearance: async (): Promise<AppearanceState> => {

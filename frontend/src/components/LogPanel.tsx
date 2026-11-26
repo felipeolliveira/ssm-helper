@@ -1,15 +1,18 @@
 import {useEffect, useRef} from 'react'
-import {LogEntry} from '../api'
+import {LogEntry, Message} from '../api'
 import {Icon} from './Icon'
+import TroubleshootingButton from './TroubleshootingButton'
 import {useSecretText} from '../privacy'
 import {useI18n} from '../i18n'
 
-export default function LogPanel({open, logs, onClose, onClear, onOpenFolder}: {
+export default function LogPanel({open, logs, onClose, onClear, onOpenFolder, onError}: {
     open: boolean
     logs: LogEntry[]
     onClose: () => void
     onClear: () => void
     onOpenFolder: () => void
+    // Shows a failure of the troubleshooting file in the panel
+    onError: (m: Message) => void
 }) {
     const {t, tm} = useI18n()
     const endRef = useRef<HTMLDivElement>(null)
@@ -27,6 +30,7 @@ export default function LogPanel({open, logs, onClose, onClear, onOpenFolder}: {
                 <strong>{t('log.title')}</strong>
                 <span className="muted">{t('log.subtitle')}</span>
                 <div className="spacer"/>
+                <TroubleshootingButton className="btn ghost" onError={onError}/>
                 <button className="btn ghost" onClick={onOpenFolder} title={t('log.openFolderHint')}>
                     <Icon name="folder"/> {t('log.openFolder')}
                 </button>
