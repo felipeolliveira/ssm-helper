@@ -53,6 +53,8 @@
       "profile": "perfil",
       "loginNeeded": "login necessário",
       "port": "Porta",
+      "copyAddress": "Copiar {address}, para curl, Postman ou um cliente de banco",
+      "addressCopied": "Copiado",
       "region": "Região",
       "remoteHost": "Host remoto",
       "domains": "Domínios",
