@@ -236,7 +236,7 @@
       "hint": "Salva um .zip com a versão, os ambientes (com os dados sensíveis mascarados) e os logs dos últimos 7 dias, para enviar ao suporte. Tokens do SSO e cookies do Chrome nunca entram.",
       "title": "Salvar arquivo de diagnóstico?",
       "local": "O arquivo é salvo apenas neste computador, na pasta que você escolher. Nada é enviado para lugar nenhum.",
-      "contents": "Ele traz a versão do app, os ambientes, o estado dos túneis e os logs dos últimos 7 dias. SSO URLs, números de conta, hosts, domínios e URLs são mascarados, mas nomes de perfis, roles e targets, regiões, portas, o seu usuário do Windows e mensagens de erro da AWS continuam visíveis.",
+      "contents": "Ele traz a versão do app, os ambientes, o estado dos túneis e os logs dos últimos 7 dias. O app mascara as SSO URLs, números de conta, hosts, domínios e URLs que reconhece, mas isso não é garantia: nomes de perfis, roles e targets, regiões, portas, o seu usuário do Windows e mensagens de erro da AWS continuam visíveis.",
       "share": "Compartilhe apenas com o time de suporte ou com pessoas de confiança, e apague o arquivo depois de enviar.",
       "confirm": "Salvar arquivo"
     },

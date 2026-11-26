@@ -236,7 +236,7 @@
       "hint": "Saves a .zip with the version, the environments (sensitive values masked) and the logs of the last 7 days, to send to support. SSO tokens and Chrome cookies never go in it.",
       "title": "Save troubleshooting file?",
       "local": "The file is only saved on this computer, in the folder you choose. Nothing is sent anywhere.",
-      "contents": "It has the app version, the environments, the tunnel states and the logs of the last 7 days. SSO URLs, account numbers, hosts, domains and URLs are masked, but names of profiles, roles and targets, regions, ports, your Windows user name and AWS error messages stay as they are.",
+      "contents": "It has the app version, the environments, the tunnel states and the logs of the last 7 days. The app masks the SSO URLs, account numbers, hosts, domains and URLs it recognizes, but that is not a guarantee: names of profiles, roles and targets, regions, ports, your Windows user name and AWS error messages stay as they are.",
       "share": "Share it only with the support team or people you trust, and delete it once it has been sent.",
       "confirm": "Save file"
     },

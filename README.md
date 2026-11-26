@@ -293,7 +293,7 @@ When something goes wrong and you need help, send the **troubleshooting file**: 
 - the environment files (`environments/`);
 - the log files of the last 7 days (`logs/`).
 
-SSO URLs, account numbers (all but the last 4 digits), SSM targets, remote hosts, domains and URLs are replaced by `••••••••` in every file. The SSO cache (tokens), the Chrome profiles (cookies and logins) and the WebView data never go in it. Even so, the file is not anonymous: names of profiles, roles and targets, regions, ports, your Windows user name (in the app folders) and AWS error messages stay as they are. The file is only saved on your computer, and nothing is sent by the app. Before saving, the app asks for confirmation and recalls this. Share it only with the support team or people you trust, and delete it once it has been sent.
+SSO URLs, account numbers (all but the last 4 digits), SSM targets, remote hosts, domains and URLs of the environments are replaced by `••••••••` in every file, as well as AWS account numbers, instance IDs, IAM Identity Center addresses and load balancer or database hosts found in the logs. The masking only replaces values it recognizes, so it is not a guarantee. The SSO cache (tokens), the Chrome profiles (cookies and logins) and the WebView data never go in it. Even so, the file is not anonymous: names of profiles, roles and targets, regions, ports, your Windows user name (in the app folders) and AWS error messages stay as they are. The file is only saved on your computer, and nothing is sent by the app. Before saving, the app asks for confirmation and recalls this. Share it only with the support team or people you trust, and delete it once it has been sent.
 
 | Symptom | Likely cause |
 |---|---|

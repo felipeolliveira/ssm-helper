@@ -293,7 +293,7 @@ Quando algo der errado e você precisar de ajuda, envie o **arquivo de diagnóst
 - os arquivos de ambiente (`environments/`);
 - os logs dos últimos 7 dias (`logs/`).
 
-SSO URLs, números de conta (menos os 4 últimos dígitos), SSM targets, hosts remotos, domínios e URLs viram `••••••••` em todos os arquivos. O cache do SSO (tokens), os perfis do Chrome (cookies e logins) e os dados do WebView nunca entram. Mesmo assim, o arquivo não é anônimo: nomes de perfis, roles e targets, regiões, portas, o seu usuário do Windows (nas pastas do app) e mensagens de erro da AWS continuam visíveis. O arquivo é salvo apenas no seu computador, e o app não envia nada. Antes de salvar, o app pede confirmação e lembra disso. Compartilhe apenas com o time de suporte ou com pessoas de confiança, e apague o arquivo depois de enviar.
+SSO URLs, números de conta (menos os 4 últimos dígitos), SSM targets, hosts remotos, domínios e URLs dos ambientes viram `••••••••` em todos os arquivos, assim como números de conta da AWS, IDs de instância, endereços do IAM Identity Center e hosts de load balancer ou banco que aparecem nos logs. O mascaramento só troca os valores que reconhece, então não é garantia. O cache do SSO (tokens), os perfis do Chrome (cookies e logins) e os dados do WebView nunca entram. Mesmo assim, o arquivo não é anônimo: nomes de perfis, roles e targets, regiões, portas, o seu usuário do Windows (nas pastas do app) e mensagens de erro da AWS continuam visíveis. O arquivo é salvo apenas no seu computador, e o app não envia nada. Antes de salvar, o app pede confirmação e lembra disso. Compartilhe apenas com o time de suporte ou com pessoas de confiança, e apague o arquivo depois de enviar.
 
 | Sintoma | Causa provável |
 |---|---|

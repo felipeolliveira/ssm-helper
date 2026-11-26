@@ -33,7 +33,7 @@ const qaEnv = `{
       "remotePort": "443",
       "localPort": "8443",
       "dnsHosts": ["*.qa.secret-corp.com"],
-      "openUrls": ["app.qa.secret-corp.com/login"],
+      "openUrls": ["app.qa.secret-corp.com/login?tab=1&lang=pt"],
       "chromeProfile": ""
     }
   }
@@ -89,7 +89,11 @@ func TestWrite(t *testing.T) {
 		`2026-11-26 10:00:00 [qa-web] TUNNEL_ACTIVE port="8443"
 2026-11-26 10:00:01 [qa-web] TUNNEL_PLUGIN_OUTPUT | Starting session with SessionId i-0abc1234def567890 to internal-alb-qa.us-east-1.elb.amazonaws.com
 2026-11-26 10:00:02 [qa-admin] SSO_LOGIN_FAILED | account 111122223333 at https://identitycenter.amazonaws.com/ssoins-1234567890abcdef
-2026-11-26 10:00:03 [qa-web] CHROME_COMMAND | --host-rules=MAP *.qa.secret-corp.com 127.0.0.1:8443 https://app.qa.secret-corp.com/login
+2026-11-26 10:00:03 [qa-web] CHROME_COMMAND | --host-rules=MAP *.qa.secret-corp.com 127.0.0.1:8443 https://app.qa.secret-corp.com/login?tab=1&lang=pt
+2026-11-26 10:00:04 [qa-web] TUNNEL_PLUGIN_OUTPUT | Host APP.QA.SECRET-CORP.COM did not answer
+2026-11-26 10:00:05 [p] SSO_LOGIN_FAILED | https://leak.example/start refused the login
+2026-11-26 10:00:06 [old] SSO_LOGIN_FAILED | account 999988887777 at https://my-portal.awsapps.com/start ssoins-abcdef0123456789
+2026-11-26 10:00:07 [old] TUNNEL_PLUGIN_OUTPUT | Starting session with SessionId i-0fedcba9876543210 to old-db.abc123xyz.us-east-1.rds.amazonaws.com
 `)
 	write(filepath.Join(logDir, "ssm-helper-2026-11-20.log"), "six days ago\n")
 	write(filepath.Join(logDir, "ssm-helper-2026-11-19.log"), "seven days ago, left out\n")
@@ -98,7 +102,10 @@ func TestWrite(t *testing.T) {
 	var buf bytes.Buffer
 	err := Write(&buf, Input{
 		Now:      now,
-		Docs:     map[string]any{"about.json": map[string]string{"version": "1.4.0"}, "state.json": map[string]any{"tunnels": []string{"qa-web connected on internal-alb-qa.us-east-1.elb.amazonaws.com"}}},
+		Docs: map[string]any{"about.json": map[string]string{"version": "1.4.0"}, "state.json": map[string]any{"tunnels": []string{
+			"qa-web connected on internal-alb-qa.us-east-1.elb.amazonaws.com",
+			"opened https://app.qa.secret-corp.com/login?tab=1&lang=pt",
+		}}},
 		EnvDir:   envDir,
 		EnvNames: []string{"broken", "qa"},
 		LogDir:   logDir,
@@ -124,7 +131,8 @@ func TestWrite(t *testing.T) {
 	}
 
 	for name, content := range files {
-		for _, s := range append(secrets, "SSO-TOKEN", "COOKIES", "leak.example") {
+		for _, s := range append(secrets, "SSO-TOKEN", "COOKIES", "leak.example", "SECRET-CORP",
+			"999988887777", "my-portal", "ssoins-abcdef", "i-0fedcba9876543210", "old-db.abc123xyz", "lang=pt") {
 			if strings.Contains(content, s) {
 				t.Errorf("%s contains %q:\n%s", name, s, content)
 			}
@@ -152,7 +160,12 @@ func TestWrite(t *testing.T) {
 
 func TestMaskerPrefersLongest(t *testing.T) {
 	m := newMasker([]string{"qa.example.com", "https://qa.example.com/x", "abc"})
-	if got := m.Replace("open https://qa.example.com/x and api.qa.example.com, abc"); got != "open "+Mask+" and api."+Mask+", abc" {
-		t.Errorf("Replace = %q", got)
+	if got := m.mask("open https://qa.example.com/x and api.QA.example.com, abc"); got != "open "+Mask+" and api."+Mask+", abc" {
+		t.Errorf("mask = %q", got)
+	}
+	// Ports, dates and regions stay readable
+	line := `2026-11-26 10:00:00 [qa] TUNNEL_ACTIVE port="8443" region=us-east-1`
+	if got := newMasker(nil).mask(line); got != line {
+		t.Errorf("mask = %q", got)
 	}
 }

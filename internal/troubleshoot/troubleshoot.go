@@ -6,11 +6,13 @@ package troubleshoot
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -62,15 +64,19 @@ func Write(w io.Writer, in Input) error {
 		if err != nil {
 			return err
 		}
-		_, err = f.Write([]byte(masker.Replace(string(data))))
+		_, err = f.Write([]byte(masker.mask(string(data))))
 		return err
 	}
 	addJSON := func(name string, v any) error {
-		data, err := json.MarshalIndent(v, "", "  ")
-		if err != nil {
+		// Without HTML escaping, a URL with "&" is written as it is and still masked
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(v); err != nil {
 			return err
 		}
-		return add(name, append(data, '\n'))
+		return add(name, buf.Bytes())
 	}
 
 	if err := add("README.txt", []byte(readme(in.Now))); err != nil {
@@ -111,11 +117,16 @@ func loadEnvs(dir string, names []string) ([]envEntry, []string) {
 	for _, name := range names {
 		file := env.FileName(name)
 		e := envEntry{File: file}
-		loaded, problems, err := env.Load(filepath.Join(dir, file))
+		path := filepath.Join(dir, file)
+		loaded, problems, err := env.Load(path)
 		if err != nil {
 			m := msg.From(err)
 			e.Error = &m
 			entries = append(entries, e)
+			// Its values may still show up in the logs
+			if raw, err := os.ReadFile(path); err == nil {
+				secrets = append(secrets, rawSecrets(raw)...)
+			}
 			continue
 		}
 		secrets = append(secrets, Secrets(loaded)...)
@@ -143,6 +154,28 @@ func Secrets(e *env.Env) []string {
 		}
 		for _, u := range t.OpenURLs {
 			out = append(out, u, strings.TrimSuffix(env.LinkToURL(u), "/"))
+		}
+	}
+	return out
+}
+
+var (
+	rawField = regexp.MustCompile(`"(?:ssoUrl|accountId|ssmTarget|remoteHost)"\s*:\s*"([^"]*)"`)
+	rawList  = regexp.MustCompile(`"(?:dnsHosts|openUrls)"\s*:\s*\[([^\]]*)\]`)
+	rawItem  = regexp.MustCompile(`"([^"]*)"`)
+)
+
+// rawSecrets takes the sensitive values from an environment file that does
+// not load, as well as it can.
+func rawSecrets(data []byte) []string {
+	var out []string
+	for _, m := range rawField.FindAllSubmatch(data, -1) {
+		out = append(out, string(m[1]))
+	}
+	for _, list := range rawList.FindAllSubmatch(data, -1) {
+		for _, item := range rawItem.FindAllSubmatch(list[1], -1) {
+			v := string(item[1])
+			out = append(out, v, strings.TrimPrefix(v, "*."))
 		}
 	}
 	return out
@@ -178,23 +211,54 @@ func maskValue(v string) string {
 	return Mask
 }
 
-// newMasker replaces each secret with Mask, longest first, so a URL is masked
-// as a whole and not only its host.
-func newMasker(secrets []string) *strings.Replacer {
+// genericSecrets catches values that are not in any environment file now,
+// such as those of a deleted environment in an older log: account numbers,
+// EC2 instance IDs, IAM Identity Center instances and portals, and load
+// balancer and database hosts.
+var genericSecrets = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)\b(?:https?://)?[a-z0-9-]+\.awsapps\.com\S*`),
+	regexp.MustCompile(`(?i)\bssoins-[0-9a-f]{8,}\b`),
+	regexp.MustCompile(`(?i)\b[a-z0-9.-]+\.(?:elb|rds)\.amazonaws\.com\b`),
+	regexp.MustCompile(`\b(?:i|mi)-[0-9a-f]{8,17}\b`),
+	regexp.MustCompile(`\b[0-9]{12}\b`),
+}
+
+type masker struct {
+	known *regexp.Regexp // nil when there are no secrets
+}
+
+// newMasker matches each secret ignoring case, longest first, so a URL is
+// masked as a whole and not only its host.
+func newMasker(secrets []string) masker {
 	seen := map[string]bool{}
 	var unique []string
 	for _, s := range secrets {
-		if len(s) >= minSecretLen && !seen[s] {
-			seen[s] = true
+		key := strings.ToLower(s)
+		if len(s) >= minSecretLen && !seen[key] {
+			seen[key] = true
 			unique = append(unique, s)
 		}
 	}
-	slices.SortFunc(unique, func(a, b string) int { return len(b) - len(a) })
-	pairs := make([]string, 0, 2*len(unique))
-	for _, s := range unique {
-		pairs = append(pairs, s, Mask)
+	if len(unique) == 0 {
+		return masker{}
 	}
-	return strings.NewReplacer(pairs...)
+	slices.SortFunc(unique, func(a, b string) int { return len(b) - len(a) })
+	quoted := make([]string, len(unique))
+	for i, s := range unique {
+		quoted[i] = regexp.QuoteMeta(s)
+	}
+	return masker{known: regexp.MustCompile(`(?i)` + strings.Join(quoted, "|"))}
+}
+
+// mask replaces the known secrets and then the generic patterns.
+func (m masker) mask(s string) string {
+	if m.known != nil {
+		s = m.known.ReplaceAllLiteralString(s, Mask)
+	}
+	for _, re := range genericSecrets {
+		s = re.ReplaceAllLiteralString(s, Mask)
+	}
+	return s
 }
 
 // recentLogs lists the log files of the last LogDays days, oldest first.
@@ -227,14 +291,15 @@ environments/     the environment files
 logs/             log files of the last %d days
 
 SSO URLs, account numbers (all but the last 4 digits), SSM targets, remote
-hosts, domains and URLs of the environments are replaced by %s in every file.
-Never included: the SSO cache (tokens), the Chrome profiles (cookies, logins)
-and the WebView data.
+hosts, domains and URLs of the environments are replaced by %s in every file,
+as well as AWS account numbers, instance IDs, IAM Identity Center addresses
+and load balancer or database hosts found in the logs. Never included: the
+SSO cache (tokens), the Chrome profiles (cookies, logins) and the WebView data.
 
+The masking only replaces values it recognizes, so it is not a guarantee.
 Still visible: names of profiles, roles and targets, regions, ports, the
 Windows user name in the app folders and AWS error messages, which may name
-hosts or IPs that are not in the environments. Treat this file as internal:
-keep it with the support team or people the user trusts, and delete it once
-the issue is solved.
+other hosts or IPs. Treat this file as internal: keep it with the support
+team or people the user trusts, and delete it once the issue is solved.
 `, now.Format(time.RFC3339), LogDays, Mask)
 }
