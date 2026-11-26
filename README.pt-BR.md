@@ -278,7 +278,7 @@ Os builds publicados na página de versões procuram uma release mais nova no Gi
 - **Atualizar e reiniciar**: baixa o `ssm-helper.exe` da release, confere com o `SHA256SUMS.txt` da release, coloca no lugar do atual e reinicia o app. Se houver túneis conectados, pergunta antes, porque eles fecham junto com o app. O executável anterior fica como `ssm-helper.exe.old` e é apagado na abertura seguinte;
 - **Depois**: esconde a faixa até o app abrir de novo.
 
-Se o download, o checksum ou a troca falhar, nada muda e a faixa oferece **Baixar manualmente**. A verificação usa a API do GitHub sem token e só segue um proxy definido na variável `HTTPS_PROXY`, não a configuração de proxy do Windows: numa rede que exija proxy, a verificação falha (o Log avisa) e a atualização precisa ser baixada à mão. Builds feitos localmente (`make build`) nunca procuram atualizações.
+Os arquivos só são baixados por HTTPS dos domínios de release do GitHub, inclusive nos redirecionamentos, e o executável é limitado a 200 MB. Se o download, o checksum ou a troca falhar, nada muda e a faixa oferece **Baixar manualmente**. A verificação usa a API do GitHub sem token e só segue um proxy definido na variável `HTTPS_PROXY`, não a configuração de proxy do Windows: numa rede que exija proxy, a verificação falha (o Log avisa) e a atualização precisa ser baixada à mão. Builds feitos localmente (`make build`) nunca procuram atualizações.
 
 ## Atualizar de versões anteriores
 

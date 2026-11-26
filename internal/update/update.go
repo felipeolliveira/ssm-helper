@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -34,6 +35,38 @@ var APIBase = "https://api.github.com"
 // Client has a timeout for the release lookup. Downloads use their own
 // context. Proxies come from HTTP(S)_PROXY, as in http.DefaultTransport.
 var Client = &http.Client{Timeout: 15 * time.Second}
+
+// downloadClient only follows redirects to the hosts that serve release files.
+var downloadClient = &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("too many redirects")
+	}
+	return checkAssetURL(req.URL)
+}}
+
+// assetHosts serve the files attached to GitHub releases: github.com
+// redirects to one of the others. Tests add their local server.
+var assetHosts = map[string]bool{
+	"github.com":                           true,
+	"objects.githubusercontent.com":        true,
+	"release-assets.githubusercontent.com": true,
+}
+
+// allowHTTP lets tests use a plain HTTP server.
+var allowHTTP = false
+
+// maxExeSize caps the download; the executable is about 25 MB.
+const maxExeSize = 200 << 20
+
+func checkAssetURL(u *url.URL) error {
+	if u.Scheme != "https" && !(allowHTTP && u.Scheme == "http") {
+		return fmt.Errorf("refusing %s: not HTTPS", u.Redacted())
+	}
+	if !assetHosts[u.Hostname()] {
+		return fmt.Errorf("refusing %s: not a GitHub release host", u.Redacted())
+	}
+	return nil
+}
 
 // Release is the latest published release (drafts and prereleases are skipped by GitHub).
 type Release struct {
@@ -134,17 +167,23 @@ func Download(ctx context.Context, r Release, path string, progress func(done, t
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.ExeURL, nil)
+	if err == nil {
+		err = checkAssetURL(req.URL)
+	}
 	if err != nil {
 		return msg.Wrap(msg.UpdateDownloadFailed, err)
 	}
 	req.Header.Set("User-Agent", "ssm-helper")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := downloadClient.Do(req)
 	if err != nil {
 		return msg.Wrap(msg.UpdateDownloadFailed, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return msg.Wrap(msg.UpdateDownloadFailed, fmt.Errorf("GitHub answered %s", resp.Status))
+	}
+	if resp.ContentLength > maxExeSize {
+		return msg.Wrap(msg.UpdateDownloadFailed, fmt.Errorf("the executable has %d bytes, more than the %d allowed", resp.ContentLength, maxExeSize))
 	}
 
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
@@ -161,8 +200,12 @@ func Download(ctx context.Context, r Release, path string, progress func(done, t
 	}()
 	hash := sha256.New()
 	w := &progressWriter{w: io.MultiWriter(f, hash), total: resp.ContentLength, report: progress}
-	if _, err := io.Copy(w, resp.Body); err != nil {
+	n, err := io.Copy(w, io.LimitReader(resp.Body, maxExeSize+1))
+	if err != nil {
 		return msg.Wrap(msg.UpdateDownloadFailed, err)
+	}
+	if n > maxExeSize {
+		return msg.Wrap(msg.UpdateDownloadFailed, fmt.Errorf("the executable is larger than the %d bytes allowed", maxExeSize))
 	}
 	if got := hex.EncodeToString(hash.Sum(nil)); got != want {
 		return msg.Wrap(msg.UpdateChecksumMismatch, fmt.Errorf("expected %s, got %s", want, got))
@@ -170,13 +213,16 @@ func Download(ctx context.Context, r Release, path string, progress func(done, t
 	return nil
 }
 
-func fetch(ctx context.Context, url string, limit int64) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func fetch(ctx context.Context, rawURL string, limit int64) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err == nil {
+		err = checkAssetURL(req.URL)
+	}
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "ssm-helper")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := downloadClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

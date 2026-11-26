@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/felipeolliveira/ssm-helper/internal/msg"
@@ -55,9 +57,58 @@ func fakeGitHub(t *testing.T, exe []byte, sums string) *httptest.Server {
 	mux.HandleFunc("/dl/SHA256SUMS.txt", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, sums) })
 	srv = httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	defer func(base string) { t.Cleanup(func() { APIBase = base }) }(APIBase)
-	APIBase = srv.URL
+	allowLocal(t, srv)
 	return srv
+}
+
+// allowLocal points the package to a local test server.
+func allowLocal(t *testing.T, srv *httptest.Server) {
+	t.Helper()
+	base, host := APIBase, httptestHost(srv)
+	APIBase, allowHTTP, assetHosts[host] = srv.URL, true, true
+	t.Cleanup(func() {
+		APIBase, allowHTTP = base, false
+		delete(assetHosts, host)
+	})
+}
+
+func httptestHost(srv *httptest.Server) string {
+	u, _ := url.Parse(srv.URL)
+	return u.Hostname()
+}
+
+func TestDownloadRefusesOtherHosts(t *testing.T) {
+	exe := []byte("x")
+	fakeGitHub(t, exe, sumOf(exe)+"  ssm-helper.exe\n")
+	r, err := Latest(context.Background(), "owner/app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, u := range map[string]string{
+		"plain http":   "http://github.com/x/ssm-helper.exe",
+		"another host": "https://evil.example/ssm-helper.exe",
+	} {
+		allowHTTP = false
+		bad := r
+		bad.ExeURL = u
+		if err := Download(context.Background(), bad, filepath.Join(t.TempDir(), "new"), nil); !errors.Is(err, msg.Err(msg.UpdateDownloadFailed)) {
+			t.Errorf("%s: Download = %v, want %s", name, err, msg.UpdateDownloadFailed)
+		}
+		allowHTTP = true
+	}
+
+	// A redirect to another host is refused too
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write(exe) }))
+	defer other.Close()
+	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, strings.Replace(other.URL, "127.0.0.1", "localhost", 1)+"/exe", http.StatusFound)
+	}))
+	defer redirect.Close()
+	bad := r
+	bad.ExeURL = redirect.URL + "/exe" // same host as the allowed server (127.0.0.1)
+	if err := Download(context.Background(), bad, filepath.Join(t.TempDir(), "new"), nil); !errors.Is(err, msg.Err(msg.UpdateDownloadFailed)) {
+		t.Errorf("redirect: Download = %v, want %s", err, msg.UpdateDownloadFailed)
+	}
 }
 
 func sumOf(data []byte) string {
@@ -120,8 +171,7 @@ func TestLatestErrors(t *testing.T) {
 		http.Error(w, "rate limited", http.StatusForbidden)
 	}))
 	defer srv.Close()
-	defer func(base string) { APIBase = base }(APIBase)
-	APIBase = srv.URL
+	allowLocal(t, srv)
 	if _, err := Latest(context.Background(), "owner/app"); !errors.Is(err, msg.Err(msg.UpdateCheckFailed)) {
 		t.Fatalf("Latest = %v, want %s", err, msg.UpdateCheckFailed)
 	}
