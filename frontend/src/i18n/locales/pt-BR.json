@@ -247,7 +247,10 @@
       "upToDate": "Você está na versão mais recente ({version}).",
       "notChecked": "Ainda não verificado.",
       "devBuild": "Build de desenvolvimento: a atualização só funciona nos builds publicados na página de versões.",
-      "autoCheck": "Verificar atualizações automaticamente"
+      "autoCheck": "Verificar atualizações automaticamente",
+      "blockedTitle": "Não foi possível verificar a versão {version}",
+      "blockedText": "O app não conseguiu confirmar que esta versão foi publicada pelo time responsável, por isso ela não foi instalada. Avise o suporte e não baixe esta versão manualmente até receber retorno.",
+      "understood": "Entendi"
     },
     "troubleshooting": {
       "save": "Arquivo de diagnóstico",
@@ -375,6 +378,7 @@
     "UPDATE_CHECK_FAILED": "Não foi possível verificar se há atualizações",
     "UPDATE_DOWNLOAD_FAILED": "Não foi possível baixar a atualização",
     "UPDATE_CHECKSUM_MISMATCH": "A atualização baixada não confere com o checksum da release e foi descartada",
+    "UPDATE_SIGNATURE_INVALID": "Não foi possível verificar a versão {version}: a assinatura não confere com as chaves do app, por isso ela não foi instalada. Avise o suporte e não baixe manualmente",
     "UPDATE_APPLY_FAILED": "Não foi possível instalar a atualização",
     "UPDATE_NOT_READY": "Os arquivos da versão {version} ainda não estão na release. Tente de novo em alguns minutos.",
     "UPDATE_RESTARTING": "Reiniciando na versão {version}...",

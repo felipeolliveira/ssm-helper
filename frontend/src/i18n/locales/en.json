@@ -247,7 +247,10 @@
       "upToDate": "You are on the latest version ({version}).",
       "notChecked": "Not checked yet.",
       "devBuild": "Development build: updates only work in the builds published on the Releases page.",
-      "autoCheck": "Check for updates automatically"
+      "autoCheck": "Check for updates automatically",
+      "blockedTitle": "Version {version} could not be verified",
+      "blockedText": "The app could not confirm that this version was published by the team responsible for it, so it was not installed. Tell the support team, and do not download this version by hand until they answer.",
+      "understood": "Got it"
     },
     "troubleshooting": {
       "save": "Troubleshooting file",
@@ -375,6 +378,7 @@
     "UPDATE_CHECK_FAILED": "Could not check for updates",
     "UPDATE_DOWNLOAD_FAILED": "Could not download the update",
     "UPDATE_CHECKSUM_MISMATCH": "The downloaded update does not match the release checksum, so it was discarded",
+    "UPDATE_SIGNATURE_INVALID": "Version {version} could not be verified: its signature does not match the app keys, so it was not installed. Tell the support team and do not download it by hand",
     "UPDATE_APPLY_FAILED": "Could not put the update in place",
     "UPDATE_NOT_READY": "The files of version {version} are not attached to the release yet. Try again in a few minutes.",
     "UPDATE_RESTARTING": "Restarting on version {version}...",

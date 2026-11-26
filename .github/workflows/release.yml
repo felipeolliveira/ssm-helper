@@ -1,10 +1,16 @@
 # Builds ssm-helper.exe and attaches it to a release.
 #
 # - Publishing a release (on GitHub or with `gh release create`) builds the
-#   release's tag and uploads ssm-helper.exe and SHA256SUMS.txt to it.
+#   release's tag and uploads ssm-helper.exe, SHA256SUMS.txt and its
+#   signature, SHA256SUMS.txt.sig, to it.
 # - Running it by hand builds an existing tag; with "upload" on, the files
 #   replace the ones in that tag's release. The build is also kept as a
 #   workflow artifact.
+#
+# The build job has no secrets. The sign job runs in the "release"
+# environment, which holds UPDATE_SIGNING_KEY and waits for a reviewer to
+# approve it (Actions → the run → Review deployments), so the key is only
+# handed to a run someone has looked at. See "Signing releases" in the README.
 #
 # The version in the .exe properties comes from the tag: v1.2.0 -> 1.2.0.
 name: Release
@@ -23,7 +29,7 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.event.release.tag_name || inputs.tag }}
@@ -132,8 +138,55 @@ jobs:
             build/bin/SHA256SUMS.txt
           if-no-files-found: error
 
+  sign:
+    name: Sign and attach
+    needs: windows
+    runs-on: ubuntu-latest
+    # Holds UPDATE_SIGNING_KEY and waits for a reviewer's approval
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Download the build
+        uses: actions/download-artifact@v7
+        with:
+          name: ssm-helper-${{ env.TAG }}-windows-amd64
+          path: build/bin
+
+      # The app only installs an update whose SHA256SUMS.txt is signed, together
+      # with the tag, with a key it knows (internal/update/keys.go). The tag in
+      # the signature keeps the files of an older release from being published
+      # again under a newer tag. Verifying with the built-in keys catches a
+      # secret that does not match them before anything is published.
+      - name: Sign checksums
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          (cd build/bin && sha256sum -c SHA256SUMS.txt)
+          go run ./tools/updatekey sign -key-env UPDATE_SIGNING_KEY -version "$TAG" build/bin/SHA256SUMS.txt
+          go run ./tools/updatekey verify -version "$TAG" build/bin/SHA256SUMS.txt
+
+      - name: Keep the signed build as an artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ssm-helper-${{ env.TAG }}-windows-amd64-signed
+          path: |
+            build/bin/ssm-helper.exe
+            build/bin/SHA256SUMS.txt
+            build/bin/SHA256SUMS.txt.sig
+          if-no-files-found: error
+
       - name: Attach to the release
         if: github.event_name == 'release' || inputs.upload
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$TAG" build/bin/ssm-helper.exe build/bin/SHA256SUMS.txt --clobber
+        run: gh release upload "$TAG" build/bin/ssm-helper.exe build/bin/SHA256SUMS.txt build/bin/SHA256SUMS.txt.sig --clobber

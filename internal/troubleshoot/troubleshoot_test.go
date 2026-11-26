@@ -101,7 +101,7 @@ func TestWrite(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := Write(&buf, Input{
-		Now:      now,
+		Now: now,
 		Docs: map[string]any{"about.json": map[string]string{"version": "1.4.0"}, "state.json": map[string]any{"tunnels": []string{
 			"qa-web connected on internal-alb-qa.us-east-1.elb.amazonaws.com",
 			"opened https://app.qa.secret-corp.com/login?tab=1&lang=pt",

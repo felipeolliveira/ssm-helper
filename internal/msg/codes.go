@@ -117,6 +117,7 @@ const (
 	UpdateCheckFailed      = "UPDATE_CHECK_FAILED"      // detail
 	UpdateDownloadFailed   = "UPDATE_DOWNLOAD_FAILED"   // detail
 	UpdateChecksumMismatch = "UPDATE_CHECKSUM_MISMATCH" // detail
+	UpdateSignatureInvalid = "UPDATE_SIGNATURE_INVALID" // version; detail
 	UpdateApplyFailed      = "UPDATE_APPLY_FAILED"      // detail
 	UpdateNotReady         = "UPDATE_NOT_READY"         // version
 	UpdateRestarting       = "UPDATE_RESTARTING"        // version

@@ -15,6 +15,9 @@ config.json
 config.*.json
 ssm-helper.settings.json
 
+# Update signing keys (tools/updatekey): the private halves never go into Git
+*.key
+
 # Build output
 build/bin
 frontend/node_modules

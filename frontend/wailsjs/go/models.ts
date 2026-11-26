@@ -418,6 +418,7 @@ export namespace main {
 	    latest: string;
 	    url: string;
 	    available: boolean;
+	    blocked: boolean;
 	    checkedAt: string;
 	
 	    static createFrom(source: any = {}) {
@@ -431,6 +432,7 @@ export namespace main {
 	        this.latest = source["latest"];
 	        this.url = source["url"];
 	        this.available = source["available"];
+	        this.blocked = source["blocked"];
 	        this.checkedAt = source["checkedAt"];
 	    }
 	}

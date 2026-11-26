@@ -119,6 +119,7 @@ export default function AboutView() {
                 <p className="muted">
                     {!update ? t('about.loading')
                         : !update.enabled ? t('update.devBuild')
+                            : update.blocked ? t('update.blockedTitle', {version: update.latest})
                             : update.available ? t('update.available', {version: update.latest})
                                 : update.checkedAt ? t('update.upToDate', {version: update.current})
                                     : t('update.notChecked')}
