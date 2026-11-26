@@ -43,6 +43,7 @@ export default function App() {
     const [ssoCodes, setSSOCodes] = useState<Record<string, SSOCode>>({})
     const [logOpen, setLogOpen] = useState(false)
     const [autoChrome, setAutoChrome] = useState(true)
+    const [chromeOpen, setChromeOpen] = useState<string[]>([])
     const [loadError, setLoadError] = useState<Message | null>(null)
     const {t, tm} = useI18n()
     const [appearanceState, setAppearanceState] = useState<AppearanceState | null>(null)
@@ -124,6 +125,8 @@ export default function App() {
             if (s.status === 'connected' || s.status === 'idle' || s.status === 'error') refreshEnvList()
         })
         const offLog = events.onLog(entry => addLogs([entry]))
+        api.openChromeProfiles().then(setChromeOpen).catch(() => {})
+        const offChrome = events.onChromeOpen(setChromeOpen)
         const offCode = events.onSSOCode(code => {
             setSSOCodes(prev => {
                 const next = {...prev}
@@ -137,6 +140,7 @@ export default function App() {
             offState()
             offLog()
             offCode()
+            offChrome()
         }
     }, [reloadEnv, refreshProfiles, refreshEnvList, addLogs])
 
@@ -225,6 +229,7 @@ export default function App() {
                             tunnels={tunnels}
                             profiles={profiles}
                             autoChrome={autoChrome}
+                            chromeOpen={chromeOpen}
                             onAutoChromeChange={toggleAutoChrome}
                         />
                     ) : view === 'profiles' && envUsable ? (

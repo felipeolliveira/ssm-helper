@@ -41,6 +41,7 @@ const (
 	eventTunnelState = "tunnel:state"
 	eventLog         = "log"
 	eventSSOCode     = "sso:code"
+	eventChromeOpen  = "chrome:open"
 )
 
 // EnvState is the active environment file and its problems.
@@ -119,6 +120,7 @@ type App struct {
 	dir     string // folder with the environments and ssm-helper.json
 	dataDir string // ssm-helper-data next to the executable: SSO cache, Chrome profiles, WebView2 data
 	sso     *sso.Manager
+	chrome  *chrome.Tracker
 	logFile *applog.File // ssm-helper-data/logs, one file per day
 
 	mu       sync.Mutex
@@ -140,6 +142,11 @@ func NewApp(dir, dataDir string) *App {
 		cancels: map[string]context.CancelFunc{},
 		logFile: applog.New(filepath.Join(dataDir, logDirName)),
 	}
+	a.chrome = chrome.NewTracker(func() {
+		if a.ctx != nil {
+			wruntime.EventsEmit(a.ctx, eventChromeOpen, a.chrome.Open())
+		}
+	})
 	a.sso = sso.NewManager(filepath.Join(dataDir, "sso-cache"), func(url string) {
 		wruntime.BrowserOpenURL(a.ctx, url)
 	})
@@ -556,6 +563,67 @@ func (a *App) OpenChrome(targetName string) error {
 	return a.openChrome(t)
 }
 
+// OpenChromeProfiles lists the Chrome profiles with a window the app opened;
+// changes arrive as chrome:open events.
+func (a *App) OpenChromeProfiles() []string {
+	return a.chrome.Open()
+}
+
+// CloseChrome closes the Chrome window the app opened for the target's
+// profile. A window opened before the app restarted is not known to it.
+func (a *App) CloseChrome(targetName string) error {
+	current := a.currentEnv()
+	if current == nil {
+		return msg.Err(msg.EnvNotReady)
+	}
+	t, ok := current.Target(targetName)
+	if !ok {
+		return msg.Err(msg.TargetNotFound, "target", targetName)
+	}
+	closed, err := a.chrome.Close(t, a.dataDir)
+	if err != nil {
+		return err
+	}
+	if closed {
+		a.logf(t.Name, msg.New(msg.ChromeClosed, "profile", t.ChromeProfileName()))
+	}
+	return nil
+}
+
+// ClearChromeProfile closes the Chrome of the target's profile and deletes its
+// data (cookies, storage, cache, logins). Chrome opens again when it was open
+// and the tunnel is connected, so the user can log in again.
+func (a *App) ClearChromeProfile(targetName string) error {
+	current := a.currentEnv()
+	if current == nil {
+		return msg.Err(msg.EnvNotReady)
+	}
+	t, ok := current.Target(targetName)
+	if !ok {
+		return msg.Err(msg.TargetNotFound, "target", targetName)
+	}
+	profile := t.ChromeProfileName()
+	if a.chrome.Running(t, a.dataDir) {
+		a.logf(t.Name, msg.New(msg.ChromeProfileClosing, "profile", profile))
+	}
+	closed, err := a.chrome.Clear(t, a.dataDir)
+	if err != nil {
+		a.logf(t.Name, msg.From(err))
+		return err
+	}
+	a.logf(t.Name, msg.New(msg.ChromeProfileCleared, "profile", profile))
+
+	a.mu.Lock()
+	connected := a.states[tunnelKey(a.settings.ActiveEnv, t.Name)].Status == StatusConnected
+	a.mu.Unlock()
+	if closed && connected {
+		if err := a.openChrome(t); err != nil {
+			a.logf(t.Name, msg.From(err))
+		}
+	}
+	return nil
+}
+
 // Reconnection of a tunnel that drops by itself (SSM idle timeout, network
 // change, laptop sleep): a new SSM session with fresh credentials, after a
 // growing delay. The count of failures starts again once a tunnel stays up
@@ -751,7 +819,7 @@ func (a *App) login(ctx context.Context, p env.Profile) error {
 }
 
 func (a *App) openChrome(t env.Target) error {
-	commandLine, err := chrome.Launch(t, a.dataDir)
+	commandLine, err := a.chrome.Launch(t, a.dataDir)
 	if err != nil {
 		if commandLine != "" {
 			a.logf(t.Name, msg.Message{Code: msg.ChromeCommand, Detail: commandLine})

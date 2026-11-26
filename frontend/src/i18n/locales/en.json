@@ -61,7 +61,17 @@
       "disconnect": "Disconnect",
       "openChrome": "Open Chrome",
       "openChromeHint": "Opens Chrome pointed at the tunnel",
-      "connectFirst": "Connect first"
+      "closeChrome": "Close Chrome",
+      "closeChromeHint": "Closes the Chrome window of this target's profile",
+      "connectFirst": "Connect first",
+      "actions": "Actions",
+      "clearBrowserData": "Clear browser data",
+      "clearingBrowserData": "Clearing the browser data...",
+      "clearBrowserDataTitle": "Clear browser data?",
+      "clearBrowserDataBody": "Deletes everything in the Chrome profile \"{profile}\": cookies, localStorage, IndexedDB, cache, logins, extensions and bookmarks. If its Chrome window is open, it will be closed, and opened again when the tunnel is connected.",
+      "clearBrowserDataShared": "These targets use the same profile and lose their data too: {targets}.",
+      "clearBrowserDataOtherEnvs": "Targets of other environments with the Chrome profile \"{profile}\" are affected as well.",
+      "clearBrowserDataConfirm": "Clear data"
     },
     "profiles": {
       "title": "AWS profiles",
@@ -322,6 +332,12 @@
     "CHROME_OPEN_FAILED": "Could not open Chrome",
     "CHROME_COMMAND": "Chrome command: {detail}",
     "CHROME_OPENED": "Chrome opened, pointed at the tunnel.",
+    "CHROME_CLOSED": "Chrome of profile {profile} closed.",
+    "CHROME_PROFILE_CLOSING": "Closing the Chrome of profile {profile}...",
+    "CHROME_PROFILE_CLEARED": "Browser data of Chrome profile {profile} cleared.",
+    "CHROME_PROFILE_IN_USE": "The Chrome of profile {profile} is still open. Close its window and try again.",
+    "CHROME_PROFILE_CLEAR_FAILED": "Could not delete every file of Chrome profile {profile}; the next Chrome still starts clean",
+    "CHROME_PROFILE_BUSY": "The data of Chrome profile {profile} is being cleared. Try again in a moment.",
 
     "DATA_DIR_CREATE_FAILED": "Could not create {dir}",
     "DATA_DIR_NOT_PROTECTED": "Could not restrict {dir} to your user. It holds the SSO login and the Chrome cookies: keep the app in a folder of your own",

@@ -221,6 +221,9 @@ export const api = {
     connect: (target: string, openChrome: boolean) => App.Connect(target, openChrome),
     disconnect: (envName: string, target: string) => App.Disconnect(envName, target),
     openChrome: (target: string) => App.OpenChrome(target),
+    closeChrome: (target: string) => App.CloseChrome(target),
+    openChromeProfiles: () => App.OpenChromeProfiles().then(p => p ?? []),
+    clearChromeProfile: (target: string) => App.ClearChromeProfile(target),
 }
 
 // Tunnels are identified by environment and target, since environments may reuse target names
@@ -237,6 +240,8 @@ export const events = {
     onTunnelState: (cb: (s: TunnelState) => void) => EventsOn('tunnel:state', cb),
     onLog: (cb: (e: LogEntry) => void) => EventsOn('log', cb),
     onSSOCode: (cb: (c: SSOCode) => void) => EventsOn('sso:code', cb),
+    // Chrome profiles with a window the app opened
+    onChromeOpen: (cb: (profiles: string[]) => void) => EventsOn('chrome:open', p => cb(p ?? [])),
 }
 
 // Binding errors arrive as the JSON of a Message (internal/msg); anything

@@ -1,5 +1,7 @@
 import {useState} from 'react'
 import {api, Env, Message, ProfileStatus, Target, toMessage, TunnelState, TunnelStatus, tunnelKey} from '../api'
+import ActionsMenu from '../components/ActionsMenu'
+import ConfirmDialog from '../components/ConfirmDialog'
 import {Icon} from '../components/Icon'
 import {Secret, useSecretText} from '../privacy'
 import {useI18n} from '../i18n'
@@ -8,13 +10,15 @@ function linkToURL(link: string) {
     return /^https?:\/\//.test(link) ? link : `https://${link}`
 }
 
-export default function TargetsView({envName, env, tunnels, profiles, autoChrome, onAutoChromeChange}: {
+export default function TargetsView({envName, env, tunnels, profiles, autoChrome, chromeOpen, onAutoChromeChange}: {
     envName: string
     env: Env
     // All tunnels, keyed by tunnelKey(env, target)
     tunnels: Record<string, TunnelState>
     profiles: ProfileStatus[]
     autoChrome: boolean
+    // Chrome profiles with a window the app opened
+    chromeOpen: string[]
     onAutoChromeChange: (value: boolean) => void
 }) {
     const {t} = useI18n()
@@ -42,6 +46,10 @@ export default function TargetsView({envName, env, tunnels, profiles, autoChrome
                         loggedIn={profiles.find(p => p.name === target.profile)?.loggedIn}
                         region={target.ssmRegion || env.profiles.find(p => p.name === target.profile)?.ssoRegion || ''}
                         autoChrome={autoChrome}
+                        chromeIsOpen={chromeOpen.includes(chromeProfile(target))}
+                        sharedWith={env.targets
+                            .filter(o => o.name !== target.name && chromeProfile(o) === chromeProfile(target))
+                            .map(o => o.name)}
                     />
                 ))}
             </div>
@@ -49,16 +57,26 @@ export default function TargetsView({envName, env, tunnels, profiles, autoChrome
     )
 }
 
-function TargetCard({envName, target, state, loggedIn, region, autoChrome}: {
+// The Chrome profile folder of a target; empty chromeProfile falls back to the name, as in the backend.
+function chromeProfile(target: Target) {
+    return target.chromeProfile || target.name
+}
+
+function TargetCard({envName, target, state, loggedIn, region, autoChrome, chromeIsOpen, sharedWith}: {
     envName: string
     target: Target
     state?: TunnelState
     loggedIn?: boolean
     region: string
     autoChrome: boolean
+    chromeIsOpen: boolean
+    // Other targets of the environment with the same Chrome profile
+    sharedWith: string[]
 }) {
     const {t, tm} = useI18n()
     const [error, setError] = useState<Message | null>(null)
+    const [confirmClear, setConfirmClear] = useState(false)
+    const [clearing, setClearing] = useState(false)
     const status: TunnelStatus = state?.status ?? 'idle'
     const busy = status === 'connecting' || status === 'login'
     const connected = status === 'connected'
@@ -76,6 +94,13 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome}: {
         }
     }
 
+    const clearBrowserData = async () => {
+        setConfirmClear(false)
+        setClearing(true)
+        await run(() => api.clearChromeProfile(target.name))
+        setClearing(false)
+    }
+
     return (
         <article className={`card target-card status-${status}`}>
             <header className="card-header">
@@ -86,9 +111,16 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome}: {
                         {loggedIn === false && <span className="tag warn">{t('targets.loginNeeded')}</span>}
                     </div>
                 </div>
-                <span className={`status-pill ${status}`}>
-                    <span className="dot"/>{t(`status.${status}`)}
-                </span>
+                <div className="card-header-end">
+                    <span className={`status-pill ${status}`}>
+                        <span className="dot"/>{t(`status.${status}`)}
+                    </span>
+                    {usesBrowser && (
+                        <ActionsMenu label={t('targets.actions')} disabled={clearing} actions={[
+                            {label: t('targets.clearBrowserData'), icon: 'eraser', danger: true, onSelect: () => setConfirmClear(true)},
+                        ]}/>
+                    )}
+                </div>
             </header>
 
             <dl className="facts">
@@ -107,7 +139,8 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome}: {
                 )}
             </dl>
 
-            {message && (
+            {clearing && <p className="card-message">{t('targets.clearingBrowserData')}</p>}
+            {message && !clearing && (
                 <p className={`card-message ${status === 'error' || error ? `error ${secretText}` : ''}`}>{tm(message)}</p>
             )}
 
@@ -121,13 +154,34 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome}: {
                         <Icon name="play"/> {t('targets.connect')}
                     </button>
                 )}
-                {usesBrowser && (
-                    <button className="btn" disabled={!connected} onClick={() => run(() => api.openChrome(target.name))}
+                {usesBrowser && (chromeIsOpen ? (
+                    <button className="btn" disabled={clearing} onClick={() => run(() => api.closeChrome(target.name))}
+                            title={t('targets.closeChromeHint')}>
+                        <Icon name="x"/> {t('targets.closeChrome')}
+                    </button>
+                ) : (
+                    <button className="btn" disabled={!connected || clearing} onClick={() => run(() => api.openChrome(target.name))}
                             title={connected ? t('targets.openChromeHint') : t('targets.connectFirst')}>
                         <Icon name="globe"/> {t('targets.openChrome')}
                     </button>
-                )}
+                ))}
             </footer>
+
+            {confirmClear && (
+                <ConfirmDialog
+                    title={t('targets.clearBrowserDataTitle')}
+                    confirmLabel={t('targets.clearBrowserDataConfirm')}
+                    confirmIcon="eraser"
+                    onConfirm={clearBrowserData}
+                    onCancel={() => setConfirmClear(false)}
+                >
+                    <p>{t('targets.clearBrowserDataBody', {profile: chromeProfile(target)})}</p>
+                    {sharedWith.length > 0 && (
+                        <p>{t('targets.clearBrowserDataShared', {targets: sharedWith.join(', ')})}</p>
+                    )}
+                    <p className="muted small">{t('targets.clearBrowserDataOtherEnvs', {profile: chromeProfile(target)})}</p>
+                </ConfirmDialog>
+            )}
         </article>
     )
 }

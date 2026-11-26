@@ -1,7 +1,8 @@
-import {useEffect, useRef, useState} from 'react'
+import {useCallback, useRef, useState} from 'react'
 import {LANGUAGES, useI18n} from '../i18n'
 import {Icon} from './Icon'
 import {flags} from './Flags'
+import {useDismiss} from './useDismiss'
 
 // Language picker: a button with the current flag and a dropdown with the others.
 export default function LanguageMenu() {
@@ -9,19 +10,8 @@ export default function LanguageMenu() {
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)
 
-    useEffect(() => {
-        if (!open) return
-        const close = (e: MouseEvent) => {
-            if (!ref.current?.contains(e.target as Node)) setOpen(false)
-        }
-        const escape = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-        document.addEventListener('mousedown', close)
-        document.addEventListener('keydown', escape)
-        return () => {
-            document.removeEventListener('mousedown', close)
-            document.removeEventListener('keydown', escape)
-        }
-    }, [open])
+    const close = useCallback(() => setOpen(false), [])
+    useDismiss(ref, open, close)
 
     const current = LANGUAGES.find(l => l.id === lang) ?? LANGUAGES[0]
 

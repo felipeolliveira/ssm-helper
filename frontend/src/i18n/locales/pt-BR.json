@@ -61,7 +61,17 @@
       "disconnect": "Desconectar",
       "openChrome": "Abrir Chrome",
       "openChromeHint": "Abre o Chrome apontando para o túnel",
-      "connectFirst": "Conecte primeiro"
+      "closeChrome": "Fechar Chrome",
+      "closeChromeHint": "Fecha a janela do Chrome do perfil deste target",
+      "connectFirst": "Conecte primeiro",
+      "actions": "Ações",
+      "clearBrowserData": "Limpar dados do navegador",
+      "clearingBrowserData": "Limpando os dados do navegador...",
+      "clearBrowserDataTitle": "Limpar dados do navegador?",
+      "clearBrowserDataBody": "Apaga tudo do perfil do Chrome \"{profile}\": cookies, localStorage, IndexedDB, cache, logins, extensões e favoritos. Se a janela do Chrome desse perfil estiver aberta, ela será fechada e reaberta quando o túnel estiver conectado.",
+      "clearBrowserDataShared": "Estes targets usam o mesmo perfil e também perdem os dados: {targets}.",
+      "clearBrowserDataOtherEnvs": "Targets de outros ambientes com o perfil do Chrome \"{profile}\" também são afetados.",
+      "clearBrowserDataConfirm": "Limpar dados"
     },
     "profiles": {
       "title": "Perfis AWS",
@@ -322,6 +332,12 @@
     "CHROME_OPEN_FAILED": "Não foi possível abrir o Chrome",
     "CHROME_COMMAND": "Comando do Chrome: {detail}",
     "CHROME_OPENED": "Chrome aberto apontando para o túnel.",
+    "CHROME_CLOSED": "Chrome do perfil {profile} fechado.",
+    "CHROME_PROFILE_CLOSING": "Fechando o Chrome do perfil {profile}...",
+    "CHROME_PROFILE_CLEARED": "Dados do navegador do perfil {profile} apagados.",
+    "CHROME_PROFILE_IN_USE": "O Chrome do perfil {profile} ainda está aberto. Feche a janela dele e tente de novo.",
+    "CHROME_PROFILE_CLEAR_FAILED": "Não foi possível apagar todos os arquivos do perfil {profile} do Chrome; mesmo assim, o próximo Chrome abre limpo",
+    "CHROME_PROFILE_BUSY": "Os dados do perfil {profile} do Chrome estão sendo apagados. Tente de novo em instantes.",
 
     "DATA_DIR_CREATE_FAILED": "Não foi possível criar {dir}",
     "DATA_DIR_NOT_PROTECTED": "Não foi possível restringir {dir} ao seu usuário. Ela guarda o login SSO e os cookies do Chrome: mantenha o app numa pasta só sua",

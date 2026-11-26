@@ -5,7 +5,6 @@ package chrome
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -25,10 +24,16 @@ func HostRules(t env.Target) string {
 	return strings.Join(rules, ",")
 }
 
+// ProfileDir is the user data dir of the target's Chrome profile. It does not
+// depend on the environment: targets with the same profile share it.
+func ProfileDir(t env.Target, dataRoot string) string {
+	return filepath.Join(dataRoot, "chrome-"+t.ChromeProfileName())
+}
+
 // Args builds the Chrome command line; each profile gets its own user data dir.
 func Args(t env.Target, dataRoot string) []string {
 	args := []string{
-		"--user-data-dir=" + filepath.Join(dataRoot, "chrome-"+t.ChromeProfileName()),
+		"--user-data-dir=" + ProfileDir(t, dataRoot),
 		"--no-first-run",
 	}
 	if rules := HostRules(t); rules != "" {
@@ -38,22 +43,6 @@ func Args(t env.Target, dataRoot string) []string {
 		args = append(args, env.LinkToURL(link))
 	}
 	return args
-}
-
-// Launch opens Chrome for the target and returns the command line used.
-func Launch(t env.Target, dataRoot string) (string, error) {
-	path, err := findChrome()
-	if err != nil {
-		return "", err
-	}
-	args := Args(t, dataRoot)
-	commandLine := fmt.Sprintf("%q %s", path, strings.Join(args, " "))
-	cmd := exec.Command(path, args...)
-	if err := cmd.Start(); err != nil {
-		return commandLine, msg.Wrap(msg.ChromeOpenFailed, err)
-	}
-	go cmd.Wait()
-	return commandLine, nil
 }
 
 func fileExists(path string) bool {

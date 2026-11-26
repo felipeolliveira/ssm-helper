@@ -10,6 +10,14 @@ export function CancelLogin(arg1) {
   return window['go']['main']['App']['CancelLogin'](arg1);
 }
 
+export function ClearChromeProfile(arg1) {
+  return window['go']['main']['App']['ClearChromeProfile'](arg1);
+}
+
+export function CloseChrome(arg1) {
+  return window['go']['main']['App']['CloseChrome'](arg1);
+}
+
 export function Connect(arg1, arg2) {
   return window['go']['main']['App']['Connect'](arg1, arg2);
 }
@@ -48,6 +56,10 @@ export function OpenAppFolder() {
 
 export function OpenChrome(arg1) {
   return window['go']['main']['App']['OpenChrome'](arg1);
+}
+
+export function OpenChromeProfiles() {
+  return window['go']['main']['App']['OpenChromeProfiles']();
 }
 
 export function OpenLogFolder() {
