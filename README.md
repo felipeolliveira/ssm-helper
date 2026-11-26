@@ -363,7 +363,8 @@ SSM_HELPER_DIR="$PWD" WSLENV="SSM_HELPER_DIR/p" ./build/bin/ssm-helper.exe
 The `.github/workflows/release.yml` workflow builds and publishes the `.exe`:
 
 1. Create a release with a tag shaped like `vX.Y.Z`, on the GitHub Releases page or with `gh release create v1.2.0 --title v1.2.0 --notes "..."`.
-2. When the release is published, the workflow runs on a GitHub Windows machine, runs the same checks as `make test`, builds, signs `SHA256SUMS.txt` and attaches `ssm-helper.exe`, `SHA256SUMS.txt` and `SHA256SUMS.txt.sig` to the release.
+2. When the release is published, the workflow runs on a GitHub Windows machine, runs the same checks as `make test` and builds.
+3. Approve the **Sign and attach** job (**Actions → the run → Review deployments**): it signs `SHA256SUMS.txt` and attaches `ssm-helper.exe`, `SHA256SUMS.txt` and `SHA256SUMS.txt.sig` to the release (see [Signing releases](#signing-releases)).
 
 The version in the `.exe` properties comes from the tag (`v1.2.0` becomes `1.2.0`), so `wails.json` does not need to change for each version. `wails.json` is embedded in the executable, so the **About** screen shows the same version; local builds show the version in the file (`1.0.0`), and the commit tells them apart. The workflow can also be run by hand (**Actions → Release → Run workflow**) for an existing tag: the build is kept as a run artifact and, with **upload** checked, replaces the release files.
 
@@ -383,17 +384,20 @@ Setting up, once:
    ```
 
 2. Store `primary.key` and `backup.key` in a password manager, in separate items. The backup key lives **only** there.
-3. Create the secret the release workflow signs with, then delete the `.key` files:
+3. On GitHub, **Settings → Environments → New environment**, create `release`:
+   - **Required reviewers**: yourself (and whoever else may approve releases);
+   - **Deployment branches and tags**: *Selected branches and tags*, with a tag rule `v*` and a branch rule `main` (runs started by hand come from `main`).
+4. Create the signing secret **in that environment**, not as a repository secret, then delete the `.key` files:
 
    ```sh
-   gh secret set UPDATE_SIGNING_KEY --repo felipeolliveira/ssm-helper < primary.key
+   gh secret set UPDATE_SIGNING_KEY --env release --repo felipeolliveira/ssm-helper < primary.key
    ```
 
-4. Put the content of `primary.pub` and `backup.pub` in `internal/update/keys.go`.
+5. Put the content of `primary.pub` and `backup.pub` in `internal/update/keys.go`.
 
-The workflow signs with the secret and checks the signature against the keys in `keys.go` before attaching anything, so a secret that does not match fails the release instead of publishing updates nobody can install.
+The build job has no secrets. The **Sign and attach** job runs in the `release` environment, so it waits for a reviewer to approve it (**Actions → the run → Review deployments**). Only then does it get the key: it signs the checksums with the tag and checks the signature against the keys in `keys.go` before attaching anything, so a secret that does not match fails the release instead of publishing updates nobody can install. Approve only runs you started, for the tag you expect.
 
-- **Primary key lost:** set the backup key as `UPDATE_SIGNING_KEY`, generate a new primary, put its public key first in `keys.go` and release. Installed copies accept the release (signed with the backup) and get the new primary key.
+- **Primary key lost:** set the backup key as `UPDATE_SIGNING_KEY` in the `release` environment, generate a new primary, put its public key first in `keys.go` and release. Installed copies accept the release (signed with the backup) and get the new primary key.
 - **Primary key leaked:** same steps, removing the leaked public key from `keys.go`. Until each copy updates, it still accepts the leaked key, so do it right away.
 - **Both lost:** generate new keys; installed copies reject the next releases, and everyone downloads one version by hand. Tell them through the usual channels: the app itself never tells users to download a version whose signature failed.
 

@@ -363,7 +363,8 @@ SSM_HELPER_DIR="$PWD" WSLENV="SSM_HELPER_DIR/p" ./build/bin/ssm-helper.exe
 O workflow `.github/workflows/release.yml` compila e publica o `.exe`:
 
 1. Crie uma release com uma tag no formato `vX.Y.Z`, pela página de Releases do GitHub ou com `gh release create v1.2.0 --title v1.2.0 --notes "..."`.
-2. Ao publicar a release, o workflow roda num Windows do GitHub, faz os mesmos testes do `make test`, compila, assina o `SHA256SUMS.txt` e anexa à release o `ssm-helper.exe`, o `SHA256SUMS.txt` e o `SHA256SUMS.txt.sig`.
+2. Ao publicar a release, o workflow roda num Windows do GitHub, faz os mesmos testes do `make test` e compila.
+3. Aprove o job **Sign and attach** (**Actions → a execução → Review deployments**): ele assina o `SHA256SUMS.txt` e anexa à release o `ssm-helper.exe`, o `SHA256SUMS.txt` e o `SHA256SUMS.txt.sig` (veja [Assinar as releases](#assinar-as-releases)).
 
 A versão nas propriedades do `.exe` vem da tag (`v1.2.0` vira `1.2.0`), então não é preciso mudar o `wails.json` a cada versão. O `wails.json` vai embutido no executável, então a tela **Sobre** mostra a mesma versão; builds locais mostram a versão do arquivo (`1.0.0`), e o commit os diferencia. O workflow também pode ser rodado à mão (**Actions → Release → Run workflow**) para uma tag existente: o build fica como artefato da execução e, com **upload** marcado, substitui os arquivos da release.
 
@@ -383,17 +384,20 @@ Configuração, uma vez só:
    ```
 
 2. Guarde o `primary.key` e o `backup.key` num cofre de senhas, em itens separados. A chave reserva fica **só** lá.
-3. Crie o secret com que o workflow de release assina e depois apague os arquivos `.key`:
+3. No GitHub, em **Settings → Environments → New environment**, crie o `release`:
+   - **Required reviewers**: você (e quem mais puder aprovar releases);
+   - **Deployment branches and tags**: *Selected branches and tags*, com uma regra de tag `v*` e uma de branch `main` (execuções iniciadas à mão vêm da `main`).
+4. Crie o secret de assinatura **nesse environment**, não como secret do repositório, e depois apague os arquivos `.key`:
 
    ```sh
-   gh secret set UPDATE_SIGNING_KEY --repo felipeolliveira/ssm-helper < primary.key
+   gh secret set UPDATE_SIGNING_KEY --env release --repo felipeolliveira/ssm-helper < primary.key
    ```
 
-4. Coloque o conteúdo de `primary.pub` e `backup.pub` em `internal/update/keys.go`.
+5. Coloque o conteúdo de `primary.pub` e `backup.pub` em `internal/update/keys.go`.
 
-O workflow assina com o secret e confere a assinatura com as chaves do `keys.go` antes de anexar qualquer coisa, então um secret que não confere faz a release falhar em vez de publicar atualizações que ninguém consegue instalar.
+O job de build não tem secrets. O job **Sign and attach** roda no environment `release`, então espera a aprovação de um revisor (**Actions → a execução → Review deployments**). Só então ele recebe a chave: assina os checksums com a tag e confere a assinatura com as chaves do `keys.go` antes de anexar qualquer coisa, então um secret que não confere faz a release falhar em vez de publicar atualizações que ninguém consegue instalar. Aprove só execuções que você iniciou, para a tag que você espera.
 
-- **Chave principal perdida:** coloque a chave reserva como `UPDATE_SIGNING_KEY`, gere uma nova principal, ponha a chave pública dela em primeiro lugar no `keys.go` e publique. As cópias instaladas aceitam a release (assinada com a reserva) e recebem a nova chave principal.
+- **Chave principal perdida:** coloque a chave reserva como `UPDATE_SIGNING_KEY` no environment `release`, gere uma nova principal, ponha a chave pública dela em primeiro lugar no `keys.go` e publique. As cópias instaladas aceitam a release (assinada com a reserva) e recebem a nova chave principal.
 - **Chave principal vazada:** os mesmos passos, tirando do `keys.go` a chave pública vazada. Até cada cópia atualizar, ela ainda aceita a chave vazada, então faça isso na hora.
 - **As duas perdidas:** gere chaves novas; as cópias instaladas recusam as próximas releases, e todo mundo baixa uma versão à mão. Avise pelos canais de sempre: o próprio app nunca manda baixar uma versão cuja assinatura falhou.
 

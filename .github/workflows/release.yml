@@ -7,6 +7,11 @@
 #   replace the ones in that tag's release. The build is also kept as a
 #   workflow artifact.
 #
+# The build job has no secrets. The sign job runs in the "release"
+# environment, which holds UPDATE_SIGNING_KEY and waits for a reviewer to
+# approve it (Actions → the run → Review deployments), so the key is only
+# handed to a run someone has looked at. See "Signing releases" in the README.
+#
 # The version in the .exe properties comes from the tag: v1.2.0 -> 1.2.0.
 name: Release
 
@@ -24,7 +29,7 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.event.release.tag_name || inputs.tag }}
@@ -124,6 +129,39 @@ jobs:
         working-directory: build/bin
         run: sha256sum ssm-helper.exe > SHA256SUMS.txt && cat SHA256SUMS.txt
 
+      - name: Keep the build as an artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ssm-helper-${{ env.TAG }}-windows-amd64
+          path: |
+            build/bin/ssm-helper.exe
+            build/bin/SHA256SUMS.txt
+          if-no-files-found: error
+
+  sign:
+    name: Sign and attach
+    needs: windows
+    runs-on: ubuntu-latest
+    # Holds UPDATE_SIGNING_KEY and waits for a reviewer's approval
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Download the build
+        uses: actions/download-artifact@v7
+        with:
+          name: ssm-helper-${{ env.TAG }}-windows-amd64
+          path: build/bin
+
       # The app only installs an update whose SHA256SUMS.txt is signed, together
       # with the tag, with a key it knows (internal/update/keys.go). The tag in
       # the signature keeps the files of an older release from being published
@@ -133,13 +171,14 @@ jobs:
         env:
           UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: |
+          (cd build/bin && sha256sum -c SHA256SUMS.txt)
           go run ./tools/updatekey sign -key-env UPDATE_SIGNING_KEY -version "$TAG" build/bin/SHA256SUMS.txt
           go run ./tools/updatekey verify -version "$TAG" build/bin/SHA256SUMS.txt
 
-      - name: Keep the build as an artifact
+      - name: Keep the signed build as an artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ssm-helper-${{ env.TAG }}-windows-amd64
+          name: ssm-helper-${{ env.TAG }}-windows-amd64-signed
           path: |
             build/bin/ssm-helper.exe
             build/bin/SHA256SUMS.txt
