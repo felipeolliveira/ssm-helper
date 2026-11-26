@@ -47,7 +47,7 @@ O **olho** ao lado do título liga o **modo de privacidade**, para compartilhar 
 
 **Login SSO**: o app abre a página do IAM Identity Center no navegador e mostra um código no topo da janela. Confira se a página mostra o mesmo código e autorize. Perfis com o mesmo `ssoUrl` compartilham o login.
 
-**Vários túneis ao mesmo tempo**: cada target usa a sua `localPort`, e só um túnel pode usar cada porta. Para abrir vários, use portas diferentes, como `8443` para QA e `9443` para produção.
+**Vários túneis ao mesmo tempo**: cada target usa a sua `localPort`, e só um túnel pode usar cada porta. Para abrir vários, use portas diferentes, como `8443` para QA e `9443` para produção. O botão de copiar ao lado da porta copia `localhost:<porta>`, para curl, Postman ou um cliente de banco.
 
 ## Ambientes
 

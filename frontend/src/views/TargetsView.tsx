@@ -3,6 +3,7 @@ import {api, Env, Message, ProfileStatus, Target, toMessage, TunnelState, Tunnel
 import ActionsMenu from '../components/ActionsMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import {Icon} from '../components/Icon'
+import {ClipboardSetText} from '../../wailsjs/runtime/runtime'
 import {Secret, useSecretText} from '../privacy'
 import {useI18n} from '../i18n'
 
@@ -149,7 +150,10 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome, chrom
             </header>
 
             <dl className="facts">
-                <div><dt>{t('targets.port')}</dt><dd><code>{target.remotePort} → localhost:{target.localPort}</code></dd></div>
+                <div><dt>{t('targets.port')}</dt><dd>
+                    <code>{target.remotePort} → localhost:{target.localPort}</code>
+                    <CopyButton text={`localhost:${target.localPort}`}/>
+                </dd></div>
                 <div><dt>{t('targets.region')}</dt><dd>{region}</dd></div>
                 <div className="wide"><dt>{t('targets.remoteHost')}</dt><dd className="truncate" title={hidden ? undefined : target.remoteHost}><Secret value={target.remoteHost}/></dd></div>
                 {target.dnsHosts.length > 0 && (
@@ -208,5 +212,24 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome, chrom
                 </ConfirmDialog>
             )}
         </article>
+    )
+}
+
+// Copies the local address of a tunnel, for curl, Postman or a database client.
+function CopyButton({text}: {text: string}) {
+    const {t} = useI18n()
+    const [copied, setCopied] = useState(false)
+    const copy = async () => {
+        if (await ClipboardSetText(text)) {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1500)
+        }
+    }
+    return (
+        <button className={`btn ghost icon-only copy-inline ${copied ? 'copied' : ''}`} onClick={copy}
+                title={copied ? t('targets.addressCopied') : t('targets.copyAddress', {address: text})}
+                aria-label={t('targets.copyAddress', {address: text})}>
+            <Icon name={copied ? 'check' : 'copy'} size={13}/>
+        </button>
     )
 }

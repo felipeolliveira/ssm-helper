@@ -47,7 +47,7 @@ The **eye** next to the title turns on **privacy mode**, for sharing your screen
 
 **SSO login**: the app opens the IAM Identity Center page in your browser and shows a code at the top of the window. Check that the page shows the same code and authorize it. Profiles with the same `ssoUrl` share the login.
 
-**Several tunnels at once**: each target uses its own `localPort`, and only one tunnel can use each port. To open several, use different ports, such as `8443` for QA and `9443` for production.
+**Several tunnels at once**: each target uses its own `localPort`, and only one tunnel can use each port. To open several, use different ports, such as `8443` for QA and `9443` for production. The copy button next to the port copies `localhost:<port>`, for curl, Postman or a database client.
 
 ## Environments
 
