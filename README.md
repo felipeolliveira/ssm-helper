@@ -2,15 +2,13 @@
 
 **English** · [Português](README.pt-BR.md)
 
-Windows app that opens **AWS Systems Manager (SSM)** tunnels with **AWS SSO (IAM Identity Center)** login, through a graphical interface.
+Windows app that opens **AWS Systems Manager (SSM)** tunnels with **AWS SSO (IAM Identity Center)** login, through a graphical interface. It reaches resources in private AWS networks (internal load balancers, RDS databases and so on) from your machine, without a VPN or an SSH bastion.
 
-It lets you reach resources in private AWS networks (internal load balancers, RDS databases and so on) from your own machine, without a VPN and without an SSH bastion.
-
-It is a single portable `ssm-helper.exe`: nothing to install, and no AWS CLI, Session Manager Plugin or WSL needed. All of that is built into the executable.
+It is a single portable `ssm-helper.exe`: no installation, AWS CLI, Session Manager Plugin or WSL needed.
 
 ## Screens
 
-Screenshots taken with privacy mode on and the sample data from `env.json.example`.
+Taken with privacy mode on and the sample data from `env.json.example`.
 
 | Targets | AWS profiles |
 |---|---|
@@ -20,76 +18,42 @@ Screenshots taken with privacy mode on and the sample data from `env.json.exampl
 
 ## Requirements
 
-- Windows 10/11 with **WebView2** (included in Windows 11 and in up-to-date Windows 10). If it is missing, the app says so and offers the download.
+- Windows 10/11 with **WebView2** (included in Windows 11 and up-to-date Windows 10; if missing, the app offers the download)
 - Google Chrome, for targets accessed through the browser
-- Access to AWS SSO, with permission for the accounts and roles you use
+- AWS SSO access to the accounts and roles you use
 
-No administrator rights are needed, not even for local ports below 1024 such as `443`.
+No administrator rights are needed, not even for ports below 1024 such as `443`.
 
 ## Installation
 
-1. Download `ssm-helper.exe` from the [Releases page](https://github.com/felipeolliveira/ssm-helper/releases/latest), create a folder of your own for the app, for example `C:\Users\<you>\Tools\ssm-helper`, and put the `.exe` in it. To check the download, compare the file's SHA-256 (`Get-FileHash .\ssm-helper.exe`, in PowerShell) with the release's `SHA256SUMS.txt`.
-2. Open `ssm-helper.exe`.
-3. The first time, the **Environment** screen opens by itself. Add the profiles and targets and click **Save**. If you already have environment files (`env.json` or `env.<name>.json`), put them in the same folder as the `.exe` before opening it.
+1. Download `ssm-helper.exe` from the [latest release](https://github.com/felipeolliveira/ssm-helper/releases/latest) into a folder of your own, such as `C:\Users\<you>\Tools\ssm-helper`. The folder must be writable: the app keeps everything in it.
+2. Open it. The first time, the **Environment** screen opens: add the profiles and targets and click **Save**. If you already have environment files (`env.json` or `env.<name>.json`), put them next to the `.exe` first.
 
-Everything the app uses and writes stays in the `.exe` folder (see [What lives in the app folder](#what-lives-in-the-app-folder)), so that folder must be writable. To take the app to another machine or user, copy the whole folder: environments, preferences, SSO login and Chrome profiles go along.
+After that, the app updates itself (see [Updates](#updates)). To move it to another machine, copy the whole folder.
 
-> Environment files hold data about your AWS accounts. They are in `.gitignore` and **must not be committed**.
+> Environment files hold data about your AWS accounts: do not commit them or send them around.
 
 ## Usage
 
-The sidebar has five screens, the environment selector and the log.
-
-- **Targets**: one card per target of the active environment, with profile, region, ports and domains. **Connect** opens the tunnel; if the SSO session has expired, the browser login happens first. **Disconnect** closes the tunnel. Closing the app closes every tunnel. If a tunnel drops by itself (SSM idle timeout, network or VPN change, the computer sleeping), the app reconnects it with growing waits, up to 10 attempts in a row; when the SSO session has expired, it stops and asks you to connect again.
-- **AWS profiles**: account, role, region and how long the SSO session of each profile is valid. **SSO login** renews the session without opening a tunnel.
+- **Targets**: one card per target. **Connect** opens the tunnel, signing in to SSO first if the session expired. If a tunnel drops (idle timeout, network change, sleep), the app reconnects it, up to 10 attempts. Closing the app closes every tunnel.
+- **AWS profiles**: account, role and SSO session of each profile. **SSO login** renews a session without opening a tunnel.
 - **Environment**: edits the active environment (see [Environments](#environments)).
-- **Preferences**: screen language (see [Language](#language)) and color palettes (see [Appearance](#appearance)).
-- **About**: app version, build (type, commit and date), platform, the versions of the embedded Session Manager Plugin, Wails and Go, and the app, data and log folders. **Copy details** copies this as text, to paste in a bug report; **Releases** opens the releases page.
+- **Preferences**: language and color palettes.
+- **About**: version and build, **Check now** for updates, and the **Troubleshooting file**.
 - **Active environment**, above the Log: switches environment or creates a new one.
-- **Log**: messages from the login, the tunnels, reconnections and file conversions. Those that come from AWS are in English, and the Session Manager Plugin's own warnings and errors show as `[plugin WARN]` and `[plugin ERROR]` lines. Everything is also written to one file per day in `ssm-helper-data\logs`, kept after the app closes; **Open folder** in the Log panel opens that folder.
+- **Log**: login, tunnel and update messages, also saved to one file per day in `ssm-helper-data\logs`.
 
-### Hiding sensitive data
+The **eye** next to the title turns on **privacy mode**, for sharing your screen: hosts, domains, URLs and paths show as `••••••••`, account numbers only show their last 4 digits, and the Log is blurred.
 
-The eye button, next to the title in the sidebar, turns on privacy mode, useful when sharing your screen or recording a video:
+**SSO login**: the app opens the IAM Identity Center page in your browser and shows a code at the top of the window. Check that the page shows the same code and authorize it. Profiles with the same `ssoUrl` share the login.
 
-- remote hosts, domains, URLs and the folder path show as `••••••••`, always the same length, so neither the format nor the length of the value shows;
-- account numbers show like at a bank, with only the last 4 digits (`••••••••6278`);
-- in the environment editor, the account, SSO URL, instance, host, domains and URL fields also show `••••••••` and become read-only; to edit them, show the data again;
-- the Log, error messages and the list of configuration problems are blurred, since they may quote IDs and hosts.
-
-The choice is saved in `ssm-helper.json`. Click the eye again to show everything.
-
-### Several tunnels at once
-
-Each connected target takes its local port (`localPort`), and only one tunnel can use each port. To open several at once, use different ports, for example `8443` for QA and `9443` for production.
-
-For those who use the Chrome window the app opens, the port does not show: URLs stay `https://domain`, because the Chrome mapping already points the domain to the right port (see [Accessing through the browser](#accessing-through-the-browser-with-the-original-domain)). Tools outside that Chrome window, such as curl or Postman, need `https://domain:<port>`.
-
-### SSO login
-
-On login, the app opens the IAM Identity Center page in the default browser and shows a code at the top of the window. Check that the page shows the same code and authorize it. If the browser does not open, use **Open login page** in the notice.
-
-Profiles with the same `ssoUrl` share the same login, even across environments. When IAM Identity Center allows it, the session renews by itself; when it does not, the app asks for a new login.
+**Several tunnels at once**: each target uses its own `localPort`, and only one tunnel can use each port. To open several, use different ports, such as `8443` for QA and `9443` for production.
 
 ## Environments
 
-An environment groups the AWS profiles and targets of one context, such as QA, production or a customer. Each one is an `env.<name>.json` file in the `.exe` folder, for example `env.qa.json` and `env.prod.json`. When there is none, the app uses `env.json`. Names accept letters, numbers, `_` and `-`.
+An environment groups the AWS profiles and targets of one context (QA, production, a customer). Each is an `env.<name>.json` file next to the `.exe`; with none, the app uses `env.json`. The selector shows them in upper case (`env.qa.json` is **QA**, `env.json` is **DEFAULT**). Switching environments does not close the tunnels of the others.
 
-### Switching and creating environments
-
-The **Active environment** selector, above the Log, lists the environments by file name in upper case: `env.customer-qa.json` shows as **CUSTOMER-QA**, and `env.json` as **DEFAULT**. It also shows how many tunnels each one has open. Switching environments **does not close the tunnels** of the others: they stay up and show as connected when you come back. You can use targets from different environments at the same time, as long as the local ports differ.
-
-**New environment** creates an empty `env.<name>.json` or a copy of the active one. If the current environment is `env.json`, the app asks for a name for it too and renames it to `env.<name>.json`, because `env.json` is no longer used once any `env.<name>.json` exists.
-
-The selected environment is saved in `ssm-helper.json`.
-
-### Editing
-
-The **Environment** screen has three tabs: **General** (title), **Profiles** and **Targets**. The app validates the fields on save and writes nothing if there is a problem. The previous version of the file is kept as `<file>.bak`. Renaming a profile also updates the targets that use it.
-
-If you edit the file by hand, use **Reload** to read it again. Tunnels already open keep the previous settings until they are reconnected.
-
-### Format
+The **Environment** screen validates on save and keeps the previous file as `<file>.bak`. If you edit the file by hand, use **Reload**.
 
 ```json
 {
@@ -119,304 +83,75 @@ If you edit the file by hand, use **Reload** to read it again. Tunnels already o
 }
 ```
 
-The full example is in `env.json.example`. The order of profiles and targets in the file is the order they appear on screen.
-
-Regions must be AWS region names (`us-east-1`, `sa-east-1`, `us-gov-west-1`) and ports numbers from 1 to 65535. The app refuses other values because they would go into the AWS service addresses and the Chrome mapping: a region such as `evil.example.com/x` would send the SSO login to another server. Be careful with environment files received from others.
-
-#### Root
-
-| Field | Required | Description |
-|---|---|---|
-| `title` | Yes | Title shown in the sidebar |
-| `profiles` | Yes | AWS profiles, by name |
-| `targets` | Yes | Targets, by name |
-
-#### `profiles`
-
-Each key is the name of an AWS profile. Names accept only letters, numbers, `.`, `_` and `-`.
-
-| Field | Required | Description |
-|---|---|---|
-| `ssoUrl` | Yes | IAM Identity Center start URL |
-| `ssoRegion` | Yes | Identity Center region, such as `us-east-1`. Also the default region of the profile's targets |
-| `accountId` | Yes | AWS account ID (12 digits) |
-| `roleName` | Yes | Role (permission set) name in SSO |
-
-#### `targets`
-
-Each key is the name of a tunnel destination. Names accept only letters, numbers, `.`, `_` and `-`.
-
-| Field | Required | Description |
-|---|---|---|
-| `profile` | Yes | Profile used to connect to this target. Must exist in `profiles` |
-| `ssmTarget` | Yes | ID of the EC2 instance with the SSM Agent, used as the bridge |
-| `ssmRegion` | No | Instance region, such as `us-east-1`. When empty, the profile's `ssoRegion` is used |
-| `ssmDocument` | Yes | SSM document, usually `AWS-StartPortForwardingSessionToRemoteHost` |
-| `remoteHost` | Yes | Destination host, reachable from the instance |
-| `remotePort` | Yes | Port on the destination host, from 1 to 65535 |
-| `localPort` | Yes | Local port exposed on your machine, from 1 to 65535 |
-| `dnsHosts` | No | Domains Chrome resolves to the tunnel. Wildcards work, like `*.qa.example.com` (see [Accessing through the browser](#accessing-through-the-browser-with-the-original-domain)) |
-| `openUrls` | No | URLs opened in Chrome tabs on connect. Without `http(s)://`, `https://` is used |
-| `chromeProfile` | No | Chrome profile used by the target. When empty, the target name is used. Accepts only letters, numbers, `.`, `_` and `-` (see [Chrome profile](#chrome-profile)) |
-
-## Language
-
-The app is available in **Portuguese (Brazil)** and **English**. On first run it follows the Windows language: Portuguese when Windows is in Portuguese, English for any other language. To change it, use the flag button in the top right corner of the **Preferences** screen: it opens the list of languages, and the flag on the button changes with the choice. The change applies to every screen right away and is saved in `ssm-helper.json`.
-
-Messages that come from AWS, such as the Session Manager Plugin lines in the Log and the details of SSO errors, stay in English, as AWS sends them.
-
-## Appearance
-
-The appearance applies to every environment and is stored in `ssm-helper.json`.
-
-The app ships two built-in palettes, `ssm-dark` and `ssm-light`, which live in the code and cannot be edited or deleted. Palettes in `ssm-helper.json` are added to them. Without any choice, the app uses `ssm-dark`.
-
-On the **Preferences** screen, the check button next to each palette makes it active. **New palette** or **Duplicate and edit** create a copy of the selected palette. Colors change on screen as you edit and are only stored on **Save**.
-
-There is no light or dark mode to configure: a palette is light or dark according to its `bgDeep` color, which also sets the title bar theme. Missing colors come from `ssm-light` or `ssm-dark`, based on that background.
-
-## `ssm-helper.json`
-
-Holds the app preferences, which do not belong to an environment. The app creates and updates this file by itself; editing it by hand is only needed for adjustments the screens do not offer.
-
-```json
-{
-  "activeEnv": "qa",
-  "language": "en",
-  "hideSensitive": false,
-  "openChromeOnConnect": true,
-  "checkUpdates": true,
-  "appearance": {
-    "palette": "teal",
-    "palettes": {
-      "teal": {
-        "bgDeep": "#07100f",
-        "primary": "#2dd4bf"
-      }
-    }
-  }
-}
-```
-
 | Field | Description |
 |---|---|
-| `activeEnv` | Selected environment: the `<name>` of `env.<name>.json`, or empty for `env.json` |
-| `language` | Screen language: `pt-BR` or `en`. Empty follows the Windows language |
-| `hideSensitive` | `true` when privacy mode (eye) is on. Default: `false` |
-| `openChromeOnConnect` | The **Open Chrome on connect** switch on the Targets screen. Default: `true` |
-| `checkUpdates` | The **Check for updates automatically** switch on the About screen. Default: `true` |
-| `appearance.palette` | Active palette: `ssm-dark`, `ssm-light` or the name of a palette in `palettes` |
-| `appearance.palettes.<name>.<color>` | Color as `#rgb`, `#rrggbb` or `#rrggbbaa`. The names `ssm-dark` and `ssm-light` are reserved |
+| `ssoUrl`, `ssoRegion` | IAM Identity Center start URL and region. The region is also the default for the profile's targets |
+| `accountId`, `roleName` | AWS account (12 digits) and role (permission set) |
+| `profile` | Profile the target connects with |
+| `ssmTarget`, `ssmRegion` | EC2 instance with the SSM Agent used as the bridge, and its region (empty uses `ssoRegion`) |
+| `ssmDocument` | Usually `AWS-StartPortForwardingSessionToRemoteHost` |
+| `remoteHost`, `remotePort` | Destination, reachable from the instance |
+| `localPort` | Port on your machine |
+| `dnsHosts` | *Optional.* Domains Chrome sends to the tunnel; wildcards like `*.qa.example.com` work |
+| `openUrls` | *Optional.* URLs opened in Chrome on connect (`https://` when no scheme is given) |
+| `chromeProfile` | *Optional.* Chrome profile of the target; empty uses the target name |
 
-Colors used by the interface: `bgDeep`, `bgBase`, `bgCard`, `bgElevated`, `border`, `borderStrong`, `textPrimary`, `textSecondary`, `textMuted`, `textFaint`, `primary`, `primary600`, `primarySoft`, `primaryDeep`, `primaryGlow`, `success`, `warning`, `danger` and `info`.
+Names accept letters, numbers, `.`, `_` and `-`; regions must be AWS region names and ports 1 to 65535. The full example is in `env.json.example`. Be careful with environment files received from others.
 
-## Accessing through the browser with the original domain
+## Accessing through the browser
 
-Applications must be opened by their real domain, not `localhost`, because of the TLS certificate and CORS. For that, the domain has to point to the local tunnel.
+Applications must be opened by their real domain (TLS certificate, CORS), so the domain has to point to the tunnel. For targets with `dnsHosts` or `openUrls`, the app opens a **separate Chrome** when the tunnel is ready (turn it off with **Open Chrome on connect**). That Chrome maps each domain in `dnsHosts` to the local port with `--host-rules`, only inside it, and has its own profile in `ssm-helper-data\chrome-<profile>`, so your regular Chrome is untouched. Include the domains the application calls behind the scenes, such as the API.
 
-For targets with `dnsHosts` or `openUrls`, the app opens a **separate Chrome instance** as soon as the tunnel is ready, with one tab per URL in `openUrls`. This can be turned off with the **Open Chrome on connect** switch on the Targets screen; the **Open Chrome** button on each card opens the window at any time while the tunnel is up. While that window is open, the button becomes **Close Chrome**, which closes it. This also works for a window left open from before the app was restarted: on startup the app finds the Chrome running with one of its profiles. That instance:
+- **Open Chrome** / **Close Chrome** on the card opens or closes that window, including one left open from before the app restarted.
+- **⋯ → Clear browser data** closes the window and deletes that profile (cookies, localStorage, cache, logins, extensions), the same as DevTools → Clear site data. Every target with the same `chromeProfile`, in any environment, loses its data too.
+- Targets with the same `chromeProfile` share logins, but Chrome only applies the mapping when it opens a new window: do not use them at the same time.
+- The bar *"You are using an unsupported command-line flag: --host-rules"* is expected and only appears in that window.
 
-- uses the `--host-rules` flag to map each `dnsHosts` domain to `127.0.0.1:<localPort>`, only inside it. Also include the domains the application calls behind the scenes, such as the API;
-- has its own profile (`ssm-helper-data\chrome-<profile>`, in the app folder), so it does not close or change your regular Chrome. The first time, sign in to the applications inside that window.
+## Updates
 
-No administrator rights or changes to the Windows `hosts` file are needed. If you can edit it, pointing the domains to `127.0.0.1` in `C:\Windows\System32\drivers\etc\hosts` is still an alternative, but then the URL needs the local port when it is not `443`.
+The app looks for a new version on GitHub when it opens and every 12 hours (switch on the About screen). When there is one, a bar at the top offers **What's new**, **Update and restart** and **Later**. Updating downloads the new `ssm-helper.exe`, checks it and restarts the app; connected tunnels close, so it asks first.
 
-### Chrome profile
+Updates are signed: the app only installs a version signed with the project's key. If a version cannot be verified, the bar turns into a warning: it was not installed, tell support and **do not download it by hand**. If a download fails, nothing changes and the bar offers **Download manually**.
 
-The profile comes from the target's `chromeProfile`. When the field is empty, each target has its own profile, named after the target.
+The check only uses a proxy set in the `HTTPS_PROXY` variable, not the Windows proxy settings. On a network that requires a proxy, download new versions by hand.
 
-To let several targets share logins and cookies, give them the same `chromeProfile`. Chrome, however, only applies `--host-rules` when it opens a new window for that profile. If the profile window is already open for another target, new tabs open in it with the old mapping, and the second target's domains do not go through the tunnel. So only share a profile between targets you do not use at the same time, or close the window before connecting to the other one.
-
-### Clearing the browser data
-
-When an application in QA changes how it uses cookies, localStorage or other browser storage, the old data can get in the way. Instead of DevTools → Application → Storage → Clear site data, use the **⋯** button at the top right of the target card → **Clear browser data**. After confirming, the app:
-
-- closes the Chrome window of that profile, including one left open from before the app was restarted (if a Chrome still holds the folder, the app asks you to close it and changes nothing);
-- deletes the `ssm-helper-data\chrome-<profile>` folder: cookies, localStorage, IndexedDB, cache, logins, extensions and bookmarks of that profile;
-- opens Chrome again, clean, if the window was open and the tunnel is connected.
-
-The folder belongs to the profile, not to the target: every target with the same `chromeProfile`, in any environment, loses its data too. The confirmation lists the targets of the current environment that share it.
-
-### "Unsupported command-line flag" warning
-
-When it opens, that Chrome window shows a bar saying *"You are using an unsupported command-line flag: --host-rules=... Stability and security will suffer."*. This is expected, and the mapping works normally.
-
-- Chrome shows this warning for any flag that redirects traffic. Both `--host-rules` and `--host-resolver-rules` are on that list ([bad_flags_prompt.cc](https://chromium.googlesource.com/chromium/src/+/main/chrome/browser/ui/startup/bad_flags_prompt.cc)).
-- The warning only applies to that separate window. Your regular Chrome is not affected.
-- You can close the bar with the **X**, but it comes back whenever the app opens the window.
-- Turning the warning off requires the `CommandLineFlagSecurityWarningsEnabled` policy in the Windows registry. That hides the warning for every flag in all of Chrome and is usually blocked by IT in corporate environments, so it is not recommended.
-
-## Credentials and data
-
-### AWS credentials
-
-Profiles come **only** from the active environment. The app does not read or change `~/.aws/config`, `~/.aws/credentials` or Windows `AWS_*` variables. Temporary role credentials only live in the app's memory.
-
-### What lives in the app folder
+## Your data
 
 ```
 ssm-helper\
   ssm-helper.exe
   env.json, env.<name>.json   environments
-  ssm-helper.json             preferences: active environment, language, eye, Chrome on connect, appearance
+  ssm-helper.json             preferences (environment, language, eye, palettes, update check)
   ssm-helper-data\
-    sso-cache\                SSO login token, one file per ssoUrl
-    chrome-<profile>\         Chrome profiles of the targets, with application logins and cookies
-    webview\                  internal data of the app window (WebView2)
-    logs\                     everything shown in the Log, one file per day (ssm-helper-YYYY-MM-DD.log)
+    sso-cache\                SSO login token
+    chrome-<profile>\         Chrome profiles of the targets
+    webview\                  data of the app window
+    logs\                     one log file per day
 ```
 
-The app's data lives only in this folder, nothing in `%APPDATA%` or `%LOCALAPPDATA%`. The installed Chrome and Windows itself keep their own records, as with any program.
+Nothing is written to `%APPDATA%` or `%LOCALAPPDATA%`. The app does not read or change `~/.aws` or the `AWS_*` variables, and role credentials only live in memory. `ssm-helper-data` holds the SSO token and cookies, so the app restricts it to your Windows user; treat the whole folder as personal data. To start from scratch, delete `ssm-helper-data`; to only force a new SSO login, delete `ssm-helper-data\sso-cache`.
 
-`ssm-helper-data` holds the SSO token and the application cookies. That is why, on startup, the app restricts that folder to your Windows user (and SYSTEM), without inheriting the permissions of the folder the app is in: other accounts on the machine cannot read it, even if the app folder is shared. When that restriction cannot be applied (for example on a FAT32 USB drive or a network folder), the Log says so. Even so, treat the app folder as personal data: do not send it to anyone, since copying the folder takes the login along. To start from scratch, delete `ssm-helper-data` (the app asks for a new SSO login and the Chrome profiles start empty); to only force a new login, delete `ssm-helper-data\sso-cache`.
-
-## Updates
-
-Builds published on the Releases page look for a newer release on GitHub 10 seconds after opening and every 12 hours, while **Check for updates automatically** (About screen) is on. **Check now**, on the same screen, looks right away. When there is a newer version, a bar at the top of the window offers:
-
-- **What's new**: opens the release page;
-- **Update and restart**: downloads `ssm-helper.exe` from the release, checks it against the release's `SHA256SUMS.txt`, puts it in place of the current one and restarts the app. If tunnels are connected, it asks first, since they close with the app. The previous executable is kept as `ssm-helper.exe.old` and deleted on the next start;
-- **Later**: hides the bar until the app opens again.
-
-Files are only downloaded over HTTPS from GitHub's release hosts, redirects included, and the executable is capped at 200 MB. The release's `SHA256SUMS.txt` must also carry a signature (`SHA256SUMS.txt.sig`), made over the checksums and the release tag with a key built into the app (see [Signing releases](#signing-releases)), so replacing the release files is not enough to push an executable to everyone. A release whose signature does not match is never installed: the bar turns into a warning to tell support and **not** download that version by hand, and the Log records it. If the download, the checksum or the replacement fails, nothing changes and the bar offers **Download manually**. The check uses the GitHub API without a token and only follows a proxy set in the `HTTPS_PROXY` variable, not the Windows proxy settings: on a network that requires a proxy, the check fails (the Log says so) and the update has to be downloaded by hand. Builds made locally (`make build`) never look for updates.
-
-## Upgrading from earlier versions
-
-On first run, the app converts the files from earlier versions it finds in the `.exe` folder:
-
-| Before | Now |
-|---|---|
-| `config.json` and `config.<name>.json` (keys such as `AWS_SSO_URL`, `DNS_HOSTS`) | `env.json` and `env.<name>.json` |
-| `config.yaml` and `config.<name>.yaml` (script version, through WSL) | `env.json` and `env.<name>.json` |
-| `ssm-helper.settings.json` | `ssm-helper.json` |
-| `appearance` section inside `config.yaml` | `appearance` in `ssm-helper.json` |
-| `%LOCALAPPDATA%\ssm-helper` (SSO login and Chrome profiles) | `ssm-helper-data\`, in the app folder, starting empty |
-
-`%LOCALAPPDATA%\ssm-helper` is not brought over: if it were, any new copy of the app would take the login and Chrome profiles from the others. On first run, sign in to SSO again and, for targets accessed through Chrome, sign in to the applications again; the Log says the old folder can be deleted. The old eye and Chrome-on-connect preferences, which lived inside the app window, are not brought over either: set them again on screen if needed. The `%APPDATA%\ssm-helper.exe` folder from earlier versions can be deleted.
-
-Environments are only converted while there is no `env*.json` in the folder. When there are both `config.*.json` and `config.*.yaml` files, the JSON ones are used, since they are newer. Old files are not deleted, and the Log shows what was converted. After checking the environments, you can delete them.
+Older versions used `config.json`/`config.yaml` and `%LOCALAPPDATA%\ssm-helper`: the app converts those environments on first run and the Log says what changed. The SSO login and Chrome profiles are not brought over, so sign in again.
 
 ## Troubleshooting
 
-When something goes wrong and you need help, send the **troubleshooting file**: the **Troubleshooting file** button on the About screen or in the Log panel saves `ssm-helper-troubleshooting-<date>.zip` (Downloads is suggested) and shows it in Explorer. It holds:
+To ask for help, send the **Troubleshooting file** (About screen or Log panel). It saves a `.zip` on your computer with the version, the state of tunnels and SSO sessions, the environments and the logs of the last 7 days. The app masks the account numbers, hosts, domains and URLs it recognizes, but the file is not anonymous: share it only with support and delete it afterwards. SSO tokens and cookies never go in it.
 
-- the version and build of the app (`about.json`);
-- the active environment, the tunnels, whether each SSO session is valid and the preferences (`state.json`);
-- the environment files (`environments/`);
-- the log files of the last 7 days (`logs/`).
-
-SSO URLs, account numbers (all but the last 4 digits), SSM targets, remote hosts, domains and URLs of the environments are replaced by `••••••••` in every file, as well as AWS account numbers, instance IDs, IAM Identity Center addresses and load balancer or database hosts found in the logs. The masking only replaces values it recognizes, so it is not a guarantee. The SSO cache (tokens), the Chrome profiles (cookies and logins) and the WebView data never go in it. Even so, the file is not anonymous: names of profiles, roles and targets, regions, ports, your Windows user name (in the app folders) and AWS error messages stay as they are. The file is only saved on your computer, and nothing is sent by the app. Before saving, the app asks for confirmation and recalls this. Share it only with the support team or people you trust, and delete it once it has been sent.
-
-| Symptom | Likely cause |
+| Symptom | What to do |
 |---|---|
-| Windows blocks the `.exe` (SmartScreen or antivirus) | The executable is not signed. Ask IT to allow the file |
-| WebView2 missing warning on startup | Windows does not have the WebView2 Runtime. Install it from the link in the warning or ask IT |
-| The Environment screen opens by itself | The active environment does not exist in the `.exe` folder or has invalid fields. Fix it on screen and save |
-| "The file is not valid JSON" | A comma, quote or brace is missing in a hand-edited file. Fix it and use **Reload**, or start over on screen |
-| "Could not save ssm-helper.json" | The `.exe` folder is not writable. Move the app to a folder of your own |
-| An environment does not show in the selector | The file must be named `env.<name>.json`, with a name of letters, numbers, `_` or `-`. `env.json` only shows when there is no `env.<name>.json` |
-| "Could not verify AWS access (STS)" | You do not have access to the profile's role or account |
-| The browser does not open on SSO login | Use **Open login page** in the notice at the top of the window |
-| "Local port ... is already in use" | Another process, or another connected target, uses the same `localPort`. Stop it or change the port (see [Several tunnels](#several-tunnels-at-once)) |
-| "Chrome was not found on this computer" | Chrome is not installed or was blocked. The command used shows in the Log |
-| Chrome opens but ignores the mapping | A window with the same Chrome profile was already open (same target, or another with the same `chromeProfile`). Close that window and connect again |
-| "Unsupported command-line flag" warning in Chrome | Expected with `--host-rules`. See [the warning](#unsupported-command-line-flag-warning) |
-| "Could not reconnect the tunnel after 10 attempts" | The network or VPN stayed down while the app retried. Connect again when it is back; the Log and the files in `ssm-helper-data\logs` show each attempt |
-| "The tunnel dropped and the SSO session has expired" | The app does not open the browser by itself during a reconnection. Click **Connect** to sign in again |
-| Reporting a problem | Use **Copy details** on the **About** screen to send the version and build, and attach the day's file from `ssm-helper-data\logs` (with privacy in mind: it may quote hosts and account IDs) |
+| Windows blocks the `.exe` (SmartScreen, antivirus) | The executable is not code-signed. Ask IT to allow it |
+| WebView2 missing | Install it from the link in the warning, or ask IT |
+| The Environment screen opens by itself | The active environment is missing or has invalid fields. Fix it on screen and save |
+| "The file is not valid JSON" | Fix the hand-edited file and use **Reload**, or start over on screen |
+| "Could not save ssm-helper.json" | The folder is not writable. Move the app to a folder of your own |
+| An environment does not show in the selector | Name it `env.<name>.json`. `env.json` only shows when there is no other |
+| "Could not verify AWS access (STS)" | You do not have access to that account or role |
+| "Local port ... is already in use" | Another program or connected target uses that `localPort`. Stop it or change the port |
+| "Chrome was not found on this computer" | Install Chrome; the command used is in the Log |
+| Chrome ignores the mapping | A window with the same Chrome profile was already open. Close it and connect again |
+| "Could not reconnect the tunnel after 10 attempts" | The network stayed down. Connect again when it is back |
+| "The tunnel dropped and the SSO session has expired" | Click **Connect** to sign in again |
 
 ## Development
 
-The app is written in Go with [Wails v2](https://wails.io), and the interface in React + TypeScript (`frontend/`).
-
-| Package | Responsibility |
-|---|---|
-| `internal/env` | Reading, validating and writing environments, listing them and converting old files |
-| `internal/settings` | `ssm-helper.json`: selected environment, language, screen options and appearance (palettes) |
-| `internal/msg` | Messages to the user as codes (see [Internationalization](#internationalization)) |
-| `internal/jsonfile` | Reading and writing JSON while keeping key order |
-| `internal/sso` | SSO login (device authorization) and role credentials |
-| `internal/tunnel` | SSM session. The [Session Manager Plugin](https://github.com/aws/session-manager-plugin) is compiled into the executable, and each tunnel runs as a child process of the `.exe` itself (`--ssm-session-plugin`), because the plugin exits the process when the session ends |
-| `internal/chrome` | Opening Chrome with `--host-rules` |
-| `internal/applog` | Daily log files (`ssm-helper-data\logs\ssm-helper-YYYY-MM-DD.log`), with each message's code, parameters and detail, since texts are only translated in the frontend |
-| `internal/troubleshoot` | The troubleshooting file, with the sensitive values masked |
-| `internal/update` | Looking for a newer release, checking its signature and checksum, and replacing the executable |
-| `tools/updatekey` | Generating the update signing keys and signing `SHA256SUMS.txt` in the release workflow |
-
-`app.go` exposes the bindings used by the frontend, `about.go` the data of the About screen, and `main.go` sets up the window.
-
-Requirements: Go 1.26+, Node 20+ and the Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0`).
-
-```sh
-make test   # go vet, go test, message translations and frontend type checking
-make build  # builds build/bin/ssm-helper.exe (also builds from Linux/WSL)
-```
-
-To run the `.exe` with another folder for the environments, `ssm-helper.json` and `ssm-helper-data`, set the `SSM_HELPER_DIR` variable. In WSL, for example:
-
-```sh
-SSM_HELPER_DIR="$PWD" WSLENV="SSM_HELPER_DIR/p" ./build/bin/ssm-helper.exe
-```
-
-### Releases
-
-The `.github/workflows/release.yml` workflow builds and publishes the `.exe`:
-
-1. Create a release with a tag shaped like `vX.Y.Z`, on the GitHub Releases page or with `gh release create v1.2.0 --title v1.2.0 --notes "..."`.
-2. When the release is published, the workflow runs on a GitHub Windows machine, runs the same checks as `make test` and builds.
-3. Approve the **Sign and attach** job (**Actions → the run → Review deployments**): it signs `SHA256SUMS.txt` and attaches `ssm-helper.exe`, `SHA256SUMS.txt` and `SHA256SUMS.txt.sig` to the release (see [Signing releases](#signing-releases)).
-
-The version in the `.exe` properties comes from the tag (`v1.2.0` becomes `1.2.0`), so `wails.json` does not need to change for each version. `wails.json` is embedded in the executable, so the **About** screen shows the same version; local builds show the version in the file (`1.0.0`), and the commit tells them apart. The workflow can also be run by hand (**Actions → Release → Run workflow**) for an existing tag: the build is kept as a run artifact and, with **upload** checked, replaces the release files.
-
-For now there is only a Windows build.
-
-### Signing releases
-
-The app only installs an update whose `SHA256SUMS.txt` is signed with one of the two ed25519 public keys in `internal/update/keys.go`: the **primary** and the **backup**. `make test` fails while they are missing, so no release is built without them.
-
-Setting up, once:
-
-1. In your own terminal (not inside an AI assistant or anywhere the output is recorded), generate the two pairs. Nothing secret is printed:
-
-   ```sh
-   go run ./tools/updatekey generate -out primary
-   go run ./tools/updatekey generate -out backup
-   ```
-
-2. Store `primary.key` and `backup.key` in a password manager, in separate items. The backup key lives **only** there.
-3. On GitHub, **Settings → Environments → New environment**, create `release`:
-   - **Required reviewers**: yourself (and whoever else may approve releases);
-   - **Deployment branches and tags**: *Selected branches and tags*, with a tag rule `v*` and a branch rule `main` (runs started by hand come from `main`).
-4. Create the signing secret **in that environment**, not as a repository secret, then delete the `.key` files:
-
-   ```sh
-   gh secret set UPDATE_SIGNING_KEY --env release --repo felipeolliveira/ssm-helper < primary.key
-   ```
-
-5. Put the content of `primary.pub` and `backup.pub` in `internal/update/keys.go`.
-
-The build job has no secrets. The **Sign and attach** job runs in the `release` environment, so it waits for a reviewer to approve it (**Actions → the run → Review deployments**). Only then does it get the key: it signs the checksums with the tag and checks the signature against the keys in `keys.go` before attaching anything, so a secret that does not match fails the release instead of publishing updates nobody can install. Approve only runs you started, for the tag you expect.
-
-- **Primary key lost:** set the backup key as `UPDATE_SIGNING_KEY` in the `release` environment, generate a new primary, put its public key first in `keys.go` and release. Installed copies accept the release (signed with the backup) and get the new primary key.
-- **Primary key leaked:** same steps, removing the leaked public key from `keys.go`. Until each copy updates, it still accepts the leaked key, so do it right away.
-- **Both lost:** generate new keys; installed copies reject the next releases, and everyone downloads one version by hand. Tell them through the usual channels: the app itself never tells users to download a version whose signature failed.
-
-Releases from before signing have no `SHA256SUMS.txt.sig`, so the app never installs them, and running the workflow by hand for a tag from before `tools/updatekey` existed fails at the signing step.
-
-### Internationalization
-
-The backend never sends text to the user. Everything it communicates (errors, tunnel states, Log lines, validation problems) is an `msg.Message`: a **code** (`TUNNEL_PORT_IN_USE`), **parameters** (`{"port": "8443"}`) and, when there is one, a raw technical **detail** such as the AWS error. Binding errors reach the frontend as that message's JSON.
-
-The frontend translates with the dictionaries in `frontend/src/i18n/locales/`:
-
-- `pt-BR.json` and `en.json` share the same structure: `ui` with the screen texts, by screen, and `messages` with one text per backend code. Parameters are written as `{name}`;
-- `useI18n()` provides `t('targets.connect')` for screen texts and `tm(message)` for backend messages; the technical detail is appended at the end (`text: detail`), unless the text places it with `{detail}`;
-- a code without a translation shows as the code itself, never blank.
-
-**New backend message:** add the constant to `internal/msg/codes.go`, use `msg.New`, `msg.Err` or `msg.Wrap`, and add the text to `messages` in **every** JSON. `make test` fails when a code has no translation.
-
-**New screen text:** add the key to `ui` in every JSON and use `t('screen.key')`. If a dictionary misses the key, type checking fails.
-
-**New language:** copy `pt-BR.json` under the language code (for example `es.json`), translate the texts and register it in `frontend/src/i18n/index.tsx` (`Lang`, `dictionaries` and `LANGUAGES`), in `settings.Languages` in Go, and add its flag to `frontend/src/components/Flags.tsx` (without one, the language gets the `en-US` flag). Flags are SVG because Windows shows flag emojis only as letters.
-
-**README screenshots:** they live in `docs/screenshots/<language>/`, taken with privacy mode on and the data from `env.json.example`.
+See [DEVELOPMENT.md](DEVELOPMENT.md): building, code map, releases, signing and translations.

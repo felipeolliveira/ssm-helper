@@ -5,7 +5,7 @@ package update
 // secret of the release workflow. The second is the backup key, whose private
 // half is kept only outside GitHub: if the primary is lost or leaked, releases
 // signed with the backup are still accepted, and a new version replaces the
-// primary. See "Signing releases" in the README.
+// primary. See "Signing releases" in DEVELOPMENT.md.
 //
 // Generate them with: go run ./tools/updatekey generate -out <name>
 var publicKeys = []string{

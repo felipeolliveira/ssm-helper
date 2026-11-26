@@ -1,5 +1,5 @@
 // Command updatekey manages the key that signs the update checksums
-// (SHA256SUMS.txt) of each release. See "Signing releases" in the README.
+// (SHA256SUMS.txt) of each release. See "Signing releases" in DEVELOPMENT.md.
 //
 //	go run ./tools/updatekey generate -out primary
 //	    writes primary.key (private, keep it secret) and primary.pub

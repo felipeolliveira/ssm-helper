@@ -10,7 +10,7 @@
 # The build job has no secrets. The sign job runs in the "release"
 # environment, which holds UPDATE_SIGNING_KEY and waits for a reviewer to
 # approve it (Actions → the run → Review deployments), so the key is only
-# handed to a run someone has looked at. See "Signing releases" in the README.
+# handed to a run someone has looked at. See "Signing releases" in DEVELOPMENT.md.
 #
 # The version in the .exe properties comes from the tag: v1.2.0 -> 1.2.0.
 name: Release
