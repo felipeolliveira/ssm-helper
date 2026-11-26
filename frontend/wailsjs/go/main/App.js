@@ -94,6 +94,10 @@ export function SaveEnv(arg1) {
   return window['go']['main']['App']['SaveEnv'](arg1);
 }
 
+export function SaveTroubleshooting() {
+  return window['go']['main']['App']['SaveTroubleshooting']();
+}
+
 export function SelectEnv(arg1) {
   return window['go']['main']['App']['SelectEnv'](arg1);
 }

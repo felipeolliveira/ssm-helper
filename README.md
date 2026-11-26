@@ -214,7 +214,7 @@ Colors used by the interface: `bgDeep`, `bgBase`, `bgCard`, `bgElevated`, `borde
 
 Applications must be opened by their real domain, not `localhost`, because of the TLS certificate and CORS. For that, the domain has to point to the local tunnel.
 
-For targets with `dnsHosts` or `openUrls`, the app opens a **separate Chrome instance** as soon as the tunnel is ready, with one tab per URL in `openUrls`. This can be turned off with the **Open Chrome on connect** switch on the Targets screen; the **Open Chrome** button on each card opens the window at any time while the tunnel is up. While that window is open, the button becomes **Close Chrome**, which closes it (a window opened before the app was restarted is not known to the app and must be closed by hand). That instance:
+For targets with `dnsHosts` or `openUrls`, the app opens a **separate Chrome instance** as soon as the tunnel is ready, with one tab per URL in `openUrls`. This can be turned off with the **Open Chrome on connect** switch on the Targets screen; the **Open Chrome** button on each card opens the window at any time while the tunnel is up. While that window is open, the button becomes **Close Chrome**, which closes it. This also works for a window left open from before the app was restarted: on startup the app finds the Chrome running with one of its profiles. That instance:
 
 - uses the `--host-rules` flag to map each `dnsHosts` domain to `127.0.0.1:<localPort>`, only inside it. Also include the domains the application calls behind the scenes, such as the API;
 - has its own profile (`ssm-helper-data\chrome-<profile>`, in the app folder), so it does not close or change your regular Chrome. The first time, sign in to the applications inside that window.
@@ -231,7 +231,7 @@ To let several targets share logins and cookies, give them the same `chromeProfi
 
 When an application in QA changes how it uses cookies, localStorage or other browser storage, the old data can get in the way. Instead of DevTools → Application → Storage → Clear site data, use the **⋯** button at the top right of the target card → **Clear browser data**. After confirming, the app:
 
-- closes the Chrome window of that profile, if the app opened it (a window opened before the app was restarted must be closed by hand; the app says so and changes nothing);
+- closes the Chrome window of that profile, including one left open from before the app was restarted (if a Chrome still holds the folder, the app asks you to close it and changes nothing);
 - deletes the `ssm-helper-data\chrome-<profile>` folder: cookies, localStorage, IndexedDB, cache, logins, extensions and bookmarks of that profile;
 - opens Chrome again, clean, if the window was open and the tunnel is connected.
 
@@ -297,6 +297,15 @@ On first run, the app converts the files from earlier versions it finds in the `
 Environments are only converted while there is no `env*.json` in the folder. When there are both `config.*.json` and `config.*.yaml` files, the JSON ones are used, since they are newer. Old files are not deleted, and the Log shows what was converted. After checking the environments, you can delete them.
 
 ## Troubleshooting
+
+When something goes wrong and you need help, send the **troubleshooting file**: the **Troubleshooting file** button on the About screen or in the Log panel saves `ssm-helper-troubleshooting-<date>.zip` (Downloads is suggested) and shows it in Explorer. It holds:
+
+- the version and build of the app (`about.json`);
+- the active environment, the tunnels, whether each SSO session is valid and the preferences (`state.json`);
+- the environment files (`environments/`);
+- the log files of the last 7 days (`logs/`).
+
+SSO URLs, account numbers (all but the last 4 digits), SSM targets, remote hosts, domains and URLs of the environments are replaced by `••••••••` in every file, as well as AWS account numbers, instance IDs, IAM Identity Center addresses and load balancer or database hosts found in the logs. The masking only replaces values it recognizes, so it is not a guarantee. The SSO cache (tokens), the Chrome profiles (cookies and logins) and the WebView data never go in it. Even so, the file is not anonymous: names of profiles, roles and targets, regions, ports, your Windows user name (in the app folders) and AWS error messages stay as they are. The file is only saved on your computer, and nothing is sent by the app. Before saving, the app asks for confirmation and recalls this. Share it only with the support team or people you trust, and delete it once it has been sent.
 
 | Symptom | Likely cause |
 |---|---|

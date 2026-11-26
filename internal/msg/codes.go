@@ -125,4 +125,8 @@ const (
 	// Log files (ssm-helper-data/logs)
 	LogFileWriteFailed = "LOG_FILE_WRITE_FAILED" // dir; detail
 	LogDirOpenFailed   = "LOG_DIR_OPEN_FAILED"   // dir; detail
+
+	// Troubleshooting file
+	TroubleshootingSaved      = "TROUBLESHOOTING_SAVED"       // file
+	TroubleshootingSaveFailed = "TROUBLESHOOTING_SAVE_FAILED" // detail
 )

@@ -271,6 +271,11 @@ export default function App() {
                         source: 'log',
                         message: toMessage(err),
                     }]))}
+                    onError={message => addLogs([{
+                        time: new Date().toLocaleTimeString('en-GB'),
+                        source: 'troubleshooting',
+                        message,
+                    }])}
                 />
             </main>
 

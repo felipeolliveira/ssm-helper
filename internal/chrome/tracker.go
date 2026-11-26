@@ -26,8 +26,10 @@ var (
 // deletingSuffix marks a profile folder renamed by Clear and not yet removed.
 const deletingSuffix = ".deleting-"
 
-// Tracker keeps the Chrome processes the app opened, one per profile folder,
-// so the app can close a window and Clear can delete the folder after it.
+// Tracker keeps the Chrome process of each profile folder, so the app can
+// close a window and Clear can delete the folder after it. It knows the
+// Chrome windows the app opens and, through Adopt, the ones found running
+// with a profile folder of the app (for example, opened before a restart).
 type Tracker struct {
 	mu       sync.Mutex
 	procs    map[string]*process
@@ -37,7 +39,7 @@ type Tracker struct {
 
 type process struct {
 	profile string
-	cmd     *exec.Cmd
+	pid     int
 	done    chan struct{}
 }
 
@@ -70,15 +72,18 @@ func (tr *Tracker) Launch(t env.Target, dataRoot string) (string, error) {
 	if err := cmd.Start(); err != nil {
 		return commandLine, msg.Wrap(msg.ChromeOpenFailed, err)
 	}
-	tr.track(dir, t.ChromeProfileName(), cmd)
+	tr.track(dir, t.ChromeProfileName(), cmd.Process.Pid, func() { cmd.Wait() })
 	return commandLine, nil
 }
 
-// track waits for cmd in the background. When Chrome is already open for the
-// folder, the new process hands its URLs to it and exits at once, so the
-// process kept is always the one that owns the window.
-func (tr *Tracker) track(dir, profile string, cmd *exec.Cmd) {
-	p := &process{profile: profile, cmd: cmd, done: make(chan struct{})}
+// track keeps pid for the folder and runs wait, which returns when the
+// process exits, in the background. When Chrome is already open for the
+// folder, a new process hands its URLs to it and exits at once, so the
+// process kept is always the one that owns the window. When the kept process
+// exits, the folder is searched again: Chrome may have restarted itself, or
+// the process was a hand-off to a window not known yet.
+func (tr *Tracker) track(dir, profile string, pid int, wait func()) {
+	p := &process{profile: profile, pid: pid, done: make(chan struct{})}
 	tr.mu.Lock()
 	_, running := tr.procs[dir]
 	if !running {
@@ -89,7 +94,7 @@ func (tr *Tracker) track(dir, profile string, cmd *exec.Cmd) {
 		tr.onChange()
 	}
 	go func() {
-		cmd.Wait()
+		wait()
 		close(p.done)
 		tr.mu.Lock()
 		owner := tr.procs[dir] == p
@@ -99,18 +104,63 @@ func (tr *Tracker) track(dir, profile string, cmd *exec.Cmd) {
 		tr.mu.Unlock()
 		if owner {
 			tr.onChange()
+			tr.adopt(dir, profile)
 		}
 	}()
 }
 
-// Running reports whether a Chrome opened by the app uses the target's profile.
+// Adopt keeps the Chrome found running for each folder (dir → profile name)
+// that has none yet.
+func (tr *Tracker) Adopt(dirs map[string]string) {
+	for dir, profile := range dirs {
+		tr.adopt(dir, profile)
+	}
+}
+
+// adopt searches the running processes for the Chrome of dir and keeps it.
+func (tr *Tracker) adopt(dir, profile string) *process {
+	tr.mu.Lock()
+	p := tr.procs[dir]
+	tr.mu.Unlock()
+	if p != nil {
+		return p
+	}
+	pid, ok := findProfileProcess(dir)
+	if !ok {
+		return nil
+	}
+	wait, ok := watchPID(pid)
+	if !ok {
+		return nil
+	}
+	tr.track(dir, profile, pid, wait)
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	return tr.procs[dir]
+}
+
+// ProfileDirs lists the Chrome profile folders in dataRoot (dir → profile
+// name), for Adopt.
+func ProfileDirs(dataRoot string) map[string]string {
+	entries, _ := os.ReadDir(dataRoot)
+	dirs := map[string]string{}
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() && strings.HasPrefix(name, "chrome-") && !strings.Contains(name, deletingSuffix) {
+			dirs[filepath.Join(dataRoot, name)] = strings.TrimPrefix(name, "chrome-")
+		}
+	}
+	return dirs
+}
+
+// Running reports whether a known Chrome uses the target's profile.
 func (tr *Tracker) Running(t env.Target, dataRoot string) bool {
 	tr.mu.Lock()
 	defer tr.mu.Unlock()
 	return tr.procs[ProfileDir(t, dataRoot)] != nil
 }
 
-// Open lists the profiles with a Chrome opened by the app, sorted.
+// Open lists the profiles with a known Chrome window, sorted.
 func (tr *Tracker) Open() []string {
 	tr.mu.Lock()
 	defer tr.mu.Unlock()
@@ -122,17 +172,17 @@ func (tr *Tracker) Open() []string {
 	return profiles
 }
 
-// Close closes the Chrome the app opened for the target's profile and waits
-// for it to exit. closed is false when there was none.
+// Close closes the Chrome of the target's profile and waits for it to exit.
+// closed is false when there was none.
 func (tr *Tracker) Close(t env.Target, dataRoot string) (closed bool, err error) {
 	dir := ProfileDir(t, dataRoot)
 	tr.mu.Lock()
 	busy := tr.clearing[dir]
-	p := tr.procs[dir]
 	tr.mu.Unlock()
 	if busy {
 		return false, msg.Err(msg.ChromeProfileBusy, "profile", t.ChromeProfileName())
 	}
+	p := tr.adopt(dir, t.ChromeProfileName())
 	if p == nil {
 		return false, nil
 	}
@@ -143,11 +193,11 @@ func (tr *Tracker) Close(t env.Target, dataRoot string) (closed bool, err error)
 // close asks Chrome to close, as clicking X would, and kills it if it does
 // not exit within closeTimeout (a page may hold it with a "leave site?" prompt).
 func (p *process) close() {
-	closeProcess(p.cmd.Process)
+	closeProcess(p.pid)
 	select {
 	case <-p.done:
 	case <-time.After(closeTimeout):
-		killProcess(p.cmd.Process)
+		killProcess(p.pid)
 		select {
 		case <-p.done:
 		case <-time.After(closeTimeout):
@@ -155,10 +205,10 @@ func (p *process) close() {
 	}
 }
 
-// Clear closes the Chrome the app opened for the target's profile and deletes
-// the profile folder: cookies, storage, cache, logins and extensions. closed
-// tells whether a window was closed. A Chrome the app did not open (for
-// example, from before a restart) is left alone and the folder is kept.
+// Clear closes the Chrome of the target's profile and deletes the profile
+// folder: cookies, storage, cache, logins and extensions. closed tells
+// whether a window was closed. When a Chrome still holds the folder (one the
+// app could not find or read), the folder is kept.
 func (tr *Tracker) Clear(t env.Target, dataRoot string) (closed bool, err error) {
 	dir := ProfileDir(t, dataRoot)
 	profile := t.ChromeProfileName()
@@ -168,7 +218,6 @@ func (tr *Tracker) Clear(t env.Target, dataRoot string) (closed bool, err error)
 		return false, msg.Err(msg.ChromeProfileBusy, "profile", profile)
 	}
 	tr.clearing[dir] = true
-	p := tr.procs[dir]
 	tr.mu.Unlock()
 	defer func() {
 		tr.mu.Lock()
@@ -176,6 +225,7 @@ func (tr *Tracker) Clear(t env.Target, dataRoot string) (closed bool, err error)
 		tr.mu.Unlock()
 	}()
 
+	p := tr.adopt(dir, profile)
 	if p != nil {
 		closed = true
 		p.close()

@@ -10,9 +10,9 @@ import (
 	"syscall"
 )
 
-func closeProcess(p *os.Process) { _ = p.Signal(syscall.SIGTERM) }
+func closeProcess(pid int) { _ = syscall.Kill(pid, syscall.SIGTERM) }
 
-func killProcess(p *os.Process) { _ = p.Kill() }
+func killProcess(pid int) { _ = syscall.Kill(pid, syscall.SIGKILL) }
 
 // inUse reports whether a Chrome holds the profile: while it runs,
 // SingletonLock is a link to "<host>-<pid>". A link left by a crash points

@@ -249,6 +249,16 @@
       "devBuild": "Development build: updates only work in the builds published on the Releases page.",
       "autoCheck": "Check for updates automatically"
     },
+    "troubleshooting": {
+      "save": "Troubleshooting file",
+      "saving": "Generating...",
+      "hint": "Saves a .zip with the version, the environments (sensitive values masked) and the logs of the last 7 days, to send to support. SSO tokens and Chrome cookies never go in it.",
+      "title": "Save troubleshooting file?",
+      "local": "The file is only saved on this computer, in the folder you choose. Nothing is sent anywhere.",
+      "contents": "It has the app version, the environments, the tunnel states and the logs of the last 7 days. The app masks the SSO URLs, account numbers, hosts, domains and URLs it recognizes, but that is not a guarantee: names of profiles, roles and targets, regions, ports, your Windows user name and AWS error messages stay as they are.",
+      "share": "Share it only with the support team or people you trust, and delete it once it has been sent.",
+      "confirm": "Save file"
+    },
     "log": {
       "title": "Log",
       "subtitle": "Messages from the SSO login and the tunnels",
@@ -371,6 +381,9 @@
     "UPDATE_COMPLETED": "Updated to version {version}.",
     "LOG_FILE_WRITE_FAILED": "Could not write the log file in {dir}. The panel keeps working, but the messages are not being saved",
     "LOG_DIR_OPEN_FAILED": "Could not open the log folder {dir}",
+
+    "TROUBLESHOOTING_SAVED": "Troubleshooting file saved: {file}",
+    "TROUBLESHOOTING_SAVE_FAILED": "Could not save the troubleshooting file",
 
     "LOCAL_PROFILE_UNNAMED": "Profile #{index} has no name",
     "LOCAL_PROFILE_DUPLICATE": "Profile '{name}' is duplicated",

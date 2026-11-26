@@ -249,6 +249,16 @@
       "devBuild": "Build de desenvolvimento: a atualização só funciona nos builds publicados na página de versões.",
       "autoCheck": "Verificar atualizações automaticamente"
     },
+    "troubleshooting": {
+      "save": "Arquivo de diagnóstico",
+      "saving": "Gerando...",
+      "hint": "Salva um .zip com a versão, os ambientes (com os dados sensíveis mascarados) e os logs dos últimos 7 dias, para enviar ao suporte. Tokens do SSO e cookies do Chrome nunca entram.",
+      "title": "Salvar arquivo de diagnóstico?",
+      "local": "O arquivo é salvo apenas neste computador, na pasta que você escolher. Nada é enviado para lugar nenhum.",
+      "contents": "Ele traz a versão do app, os ambientes, o estado dos túneis e os logs dos últimos 7 dias. O app mascara as SSO URLs, números de conta, hosts, domínios e URLs que reconhece, mas isso não é garantia: nomes de perfis, roles e targets, regiões, portas, o seu usuário do Windows e mensagens de erro da AWS continuam visíveis.",
+      "share": "Compartilhe apenas com o time de suporte ou com pessoas de confiança, e apague o arquivo depois de enviar.",
+      "confirm": "Salvar arquivo"
+    },
     "log": {
       "title": "Log",
       "subtitle": "Mensagens do login SSO e dos túneis (em inglês quando vêm da AWS)",
@@ -371,6 +381,9 @@
     "UPDATE_COMPLETED": "Atualizado para a versão {version}.",
     "LOG_FILE_WRITE_FAILED": "Não foi possível gravar o arquivo de log em {dir}. O painel continua funcionando, mas as mensagens não estão sendo salvas",
     "LOG_DIR_OPEN_FAILED": "Não foi possível abrir a pasta de logs {dir}",
+
+    "TROUBLESHOOTING_SAVED": "Arquivo de diagnóstico salvo: {file}",
+    "TROUBLESHOOTING_SAVE_FAILED": "Não foi possível salvar o arquivo de diagnóstico",
 
     "LOCAL_PROFILE_UNNAMED": "O perfil nº {index} está sem nome",
     "LOCAL_PROFILE_DUPLICATE": "O perfil '{name}' está duplicado",

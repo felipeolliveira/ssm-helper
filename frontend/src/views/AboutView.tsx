@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react'
 import {AboutInfo, api, Message, toMessage, UpdateInfo} from '../api'
 import {Icon} from '../components/Icon'
+import TroubleshootingButton from '../components/TroubleshootingButton'
 import {useI18n} from '../i18n'
 
 export default function AboutView() {
@@ -12,6 +13,7 @@ export default function AboutView() {
     const [checking, setChecking] = useState(false)
     const [checkError, setCheckError] = useState<Message | null>(null)
     const [autoCheck, setAutoCheck] = useState(true)
+    const [saveError, setSaveError] = useState<Message | null>(null)
 
     useEffect(() => {
         api.about().then(setInfo).catch(err => setError(toMessage(err)))
@@ -93,6 +95,7 @@ export default function AboutView() {
                     {info.copyright && <p className="muted small">{info.copyright}</p>}
                 </div>
                 <div className="spacer"/>
+                <TroubleshootingButton className="btn" onError={setSaveError}/>
                 <button className="btn" onClick={copy}>
                     <Icon name={copied ? 'check' : 'copy'}/> {copied ? t('about.copied') : t('about.copy')}
                 </button>
@@ -103,6 +106,7 @@ export default function AboutView() {
                 )}
             </header>
 
+            {saveError && <div className="alert error">{tm(saveError)}</div>}
             <section className="card about-card">
                 <header className="page-header">
                     <h2 className="spacer">{t('update.title')}</h2>

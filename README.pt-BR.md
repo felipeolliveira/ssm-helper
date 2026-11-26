@@ -214,7 +214,7 @@ Cores usadas pela interface: `bgDeep`, `bgBase`, `bgCard`, `bgElevated`, `border
 
 As aplicações precisam ser abertas pelo domínio real, e não por `localhost`, por causa do certificado TLS e de CORS. Para isso, o domínio precisa apontar para o túnel local.
 
-Em targets com `dnsHosts` ou `openUrls`, o app abre uma **instância separada do Chrome** assim que o túnel fica pronto, com uma aba para cada URL de `openUrls`. Isso pode ser desligado na chave **Abrir o Chrome ao conectar**, na tela Targets; o botão **Abrir Chrome** de cada card abre a janela a qualquer momento enquanto o túnel estiver ativo. Enquanto essa janela estiver aberta, o botão vira **Fechar Chrome**, que a fecha (uma janela aberta antes de o app reiniciar não é conhecida pelo app e precisa ser fechada à mão). Essa instância:
+Em targets com `dnsHosts` ou `openUrls`, o app abre uma **instância separada do Chrome** assim que o túnel fica pronto, com uma aba para cada URL de `openUrls`. Isso pode ser desligado na chave **Abrir o Chrome ao conectar**, na tela Targets; o botão **Abrir Chrome** de cada card abre a janela a qualquer momento enquanto o túnel estiver ativo. Enquanto essa janela estiver aberta, o botão vira **Fechar Chrome**, que a fecha. Isso vale também para uma janela que ficou aberta antes de o app reiniciar: ao abrir, o app encontra o Chrome rodando com um dos perfis dele. Essa instância:
 
 - usa o flag `--host-rules` para mapear cada domínio de `dnsHosts` para `127.0.0.1:<localPort>`, só dentro dela. Inclua ali também os domínios que a aplicação chama por baixo, como o da API;
 - tem perfil próprio (`ssm-helper-data\chrome-<perfil>`, na pasta do app), então não fecha nem altera o seu Chrome normal. Na primeira vez, faça login nas aplicações dentro dessa janela.
@@ -231,7 +231,7 @@ Para que vários targets compartilhem login e cookies, use o mesmo `chromeProfil
 
 Quando uma aplicação em QA muda o uso de cookies, localStorage ou outro armazenamento do navegador, os dados antigos podem atrapalhar. Em vez do DevTools → Application → Storage → Clear site data, use o botão **⋯** no canto superior direito do card do target → **Limpar dados do navegador**. Depois da confirmação, o app:
 
-- fecha a janela do Chrome desse perfil, se foi o app que a abriu (uma janela aberta antes de o app reiniciar precisa ser fechada à mão; o app avisa e não muda nada);
+- fecha a janela do Chrome desse perfil, inclusive uma que ficou aberta antes de o app reiniciar (se algum Chrome ainda estiver usando a pasta, o app pede para fechá-lo e não muda nada);
 - apaga a pasta `ssm-helper-data\chrome-<perfil>`: cookies, localStorage, IndexedDB, cache, logins, extensões e favoritos desse perfil;
 - abre o Chrome de novo, limpo, se a janela estava aberta e o túnel está conectado.
 
@@ -297,6 +297,15 @@ A pasta `%LOCALAPPDATA%\ssm-helper` não é trazida: se fosse, qualquer cópia n
 A conversão dos ambientes só acontece enquanto não existe nenhum `env*.json` na pasta. Se houver arquivos `config.*.json` e `config.*.yaml`, os JSON são usados, por serem mais recentes. Os arquivos antigos não são apagados, e o Log mostra o que foi convertido. Depois de conferir os ambientes, você pode apagá-los.
 
 ## Solução de problemas
+
+Quando algo der errado e você precisar de ajuda, envie o **arquivo de diagnóstico**: o botão **Arquivo de diagnóstico**, na tela Sobre ou no painel de Log, salva `ssm-helper-troubleshooting-<data>.zip` (a pasta Downloads é sugerida) e o mostra no Explorer. Ele contém:
+
+- a versão e o build do app (`about.json`);
+- o ambiente ativo, os túneis, se cada sessão SSO está válida e as preferências (`state.json`);
+- os arquivos de ambiente (`environments/`);
+- os logs dos últimos 7 dias (`logs/`).
+
+SSO URLs, números de conta (menos os 4 últimos dígitos), SSM targets, hosts remotos, domínios e URLs dos ambientes viram `••••••••` em todos os arquivos, assim como números de conta da AWS, IDs de instância, endereços do IAM Identity Center e hosts de load balancer ou banco que aparecem nos logs. O mascaramento só troca os valores que reconhece, então não é garantia. O cache do SSO (tokens), os perfis do Chrome (cookies e logins) e os dados do WebView nunca entram. Mesmo assim, o arquivo não é anônimo: nomes de perfis, roles e targets, regiões, portas, o seu usuário do Windows (nas pastas do app) e mensagens de erro da AWS continuam visíveis. O arquivo é salvo apenas no seu computador, e o app não envia nada. Antes de salvar, o app pede confirmação e lembra disso. Compartilhe apenas com o time de suporte ou com pessoas de confiança, e apague o arquivo depois de enviar.
 
 | Sintoma | Causa provável |
 |---|---|
