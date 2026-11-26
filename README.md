@@ -212,7 +212,7 @@ Colors used by the interface: `bgDeep`, `bgBase`, `bgCard`, `bgElevated`, `borde
 
 Applications must be opened by their real domain, not `localhost`, because of the TLS certificate and CORS. For that, the domain has to point to the local tunnel.
 
-For targets with `dnsHosts` or `openUrls`, the app opens a **separate Chrome instance** as soon as the tunnel is ready, with one tab per URL in `openUrls`. This can be turned off with the **Open Chrome on connect** switch on the Targets screen; the **Open Chrome** button on each card opens the window at any time while the tunnel is up. That instance:
+For targets with `dnsHosts` or `openUrls`, the app opens a **separate Chrome instance** as soon as the tunnel is ready, with one tab per URL in `openUrls`. This can be turned off with the **Open Chrome on connect** switch on the Targets screen; the **Open Chrome** button on each card opens the window at any time while the tunnel is up. While that window is open, the button becomes **Close Chrome**, which closes it (a window opened before the app was restarted is not known to the app and must be closed by hand). That instance:
 
 - uses the `--host-rules` flag to map each `dnsHosts` domain to `127.0.0.1:<localPort>`, only inside it. Also include the domains the application calls behind the scenes, such as the API;
 - has its own profile (`ssm-helper-data\chrome-<profile>`, in the app folder), so it does not close or change your regular Chrome. The first time, sign in to the applications inside that window.
@@ -224,6 +224,16 @@ No administrator rights or changes to the Windows `hosts` file are needed. If yo
 The profile comes from the target's `chromeProfile`. When the field is empty, each target has its own profile, named after the target.
 
 To let several targets share logins and cookies, give them the same `chromeProfile`. Chrome, however, only applies `--host-rules` when it opens a new window for that profile. If the profile window is already open for another target, new tabs open in it with the old mapping, and the second target's domains do not go through the tunnel. So only share a profile between targets you do not use at the same time, or close the window before connecting to the other one.
+
+### Clearing the browser data
+
+When an application in QA changes how it uses cookies, localStorage or other browser storage, the old data can get in the way. Instead of DevTools → Application → Storage → Clear site data, use the **⋯** button at the top right of the target card → **Clear browser data**. After confirming, the app:
+
+- closes the Chrome window of that profile, if the app opened it (a window opened before the app was restarted must be closed by hand; the app says so and changes nothing);
+- deletes the `ssm-helper-data\chrome-<profile>` folder: cookies, localStorage, IndexedDB, cache, logins, extensions and bookmarks of that profile;
+- opens Chrome again, clean, if the window was open and the tunnel is connected.
+
+The folder belongs to the profile, not to the target: every target with the same `chromeProfile`, in any environment, loses its data too. The confirmation lists the targets of the current environment that share it.
 
 ### "Unsupported command-line flag" warning
 

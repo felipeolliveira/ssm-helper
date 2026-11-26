@@ -9,6 +9,10 @@ export function About():Promise<main.AboutInfo>;
 
 export function CancelLogin(arg1:string):Promise<void>;
 
+export function ClearChromeProfile(arg1:string):Promise<void>;
+
+export function CloseChrome(arg1:string):Promise<void>;
+
 export function Connect(arg1:string,arg2:boolean):Promise<void>;
 
 export function CreateEnv(arg1:main.NewEnvRequest):Promise<main.EnvState>;
@@ -28,6 +32,8 @@ export function Login(arg1:string):Promise<void>;
 export function OpenAppFolder():Promise<void>;
 
 export function OpenChrome(arg1:string):Promise<void>;
+
+export function OpenChromeProfiles():Promise<Array<string>>;
 
 export function OpenLogFolder():Promise<void>;
 

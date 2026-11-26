@@ -286,6 +286,26 @@ nav { display: flex; flex-direction: column; gap: 2px; }
 }
 
 .card-header strong { color: var(--text-secondary); }
+.card-header-end { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+/* Actions of a card ("...", top right) */
+.actions-menu { position: relative; }
+.actions-menu .btn.open { background: var(--bg-elevated); }
+
+.actions-options {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 20;
+    min-width: 230px;
+    padding: 6px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-md);
+}
+
+.actions-options .switcher-option.danger { color: var(--danger); }
 
 .facts {
     display: grid;
@@ -828,6 +848,8 @@ input:focus, select:focus {
 .dialog-header, .dialog-footer { display: flex; align-items: center; gap: 8px; }
 .dialog-header h2 { flex: 1; }
 .dialog-footer { justify-content: flex-end; }
+.dialog-body { display: flex; flex-direction: column; gap: 10px; }
+.dialog-body p { margin: 0; color: var(--text-secondary); }
 
 .radio { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); cursor: pointer; }
 .radio input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); }

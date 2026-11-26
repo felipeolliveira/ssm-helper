@@ -212,7 +212,7 @@ Cores usadas pela interface: `bgDeep`, `bgBase`, `bgCard`, `bgElevated`, `border
 
 As aplicações precisam ser abertas pelo domínio real, e não por `localhost`, por causa do certificado TLS e de CORS. Para isso, o domínio precisa apontar para o túnel local.
 
-Em targets com `dnsHosts` ou `openUrls`, o app abre uma **instância separada do Chrome** assim que o túnel fica pronto, com uma aba para cada URL de `openUrls`. Isso pode ser desligado na chave **Abrir o Chrome ao conectar**, na tela Targets; o botão **Abrir Chrome** de cada card abre a janela a qualquer momento enquanto o túnel estiver ativo. Essa instância:
+Em targets com `dnsHosts` ou `openUrls`, o app abre uma **instância separada do Chrome** assim que o túnel fica pronto, com uma aba para cada URL de `openUrls`. Isso pode ser desligado na chave **Abrir o Chrome ao conectar**, na tela Targets; o botão **Abrir Chrome** de cada card abre a janela a qualquer momento enquanto o túnel estiver ativo. Enquanto essa janela estiver aberta, o botão vira **Fechar Chrome**, que a fecha (uma janela aberta antes de o app reiniciar não é conhecida pelo app e precisa ser fechada à mão). Essa instância:
 
 - usa o flag `--host-rules` para mapear cada domínio de `dnsHosts` para `127.0.0.1:<localPort>`, só dentro dela. Inclua ali também os domínios que a aplicação chama por baixo, como o da API;
 - tem perfil próprio (`ssm-helper-data\chrome-<perfil>`, na pasta do app), então não fecha nem altera o seu Chrome normal. Na primeira vez, faça login nas aplicações dentro dessa janela.
@@ -224,6 +224,16 @@ Não é preciso permissão de administrador nem mexer no arquivo `hosts` do Wind
 O perfil vem do `chromeProfile` do target. Se o campo ficar vazio, cada target tem o próprio perfil, com o nome do target.
 
 Para que vários targets compartilhem login e cookies, use o mesmo `chromeProfile` neles. Mas o Chrome só aplica o `--host-rules` quando abre uma janela nova daquele perfil. Se a janela do perfil já estiver aberta por outro target, as abas novas abrem nela com o mapeamento antigo, e os domínios do segundo target não vão para o túnel. Então só compartilhe o perfil entre targets que você não usa ao mesmo tempo, ou feche a janela antes de conectar no outro.
+
+### Limpar os dados do navegador
+
+Quando uma aplicação em QA muda o uso de cookies, localStorage ou outro armazenamento do navegador, os dados antigos podem atrapalhar. Em vez do DevTools → Application → Storage → Clear site data, use o botão **⋯** no canto superior direito do card do target → **Limpar dados do navegador**. Depois da confirmação, o app:
+
+- fecha a janela do Chrome desse perfil, se foi o app que a abriu (uma janela aberta antes de o app reiniciar precisa ser fechada à mão; o app avisa e não muda nada);
+- apaga a pasta `ssm-helper-data\chrome-<perfil>`: cookies, localStorage, IndexedDB, cache, logins, extensões e favoritos desse perfil;
+- abre o Chrome de novo, limpo, se a janela estava aberta e o túnel está conectado.
+
+A pasta é do perfil, não do target: todos os targets com o mesmo `chromeProfile`, em qualquer ambiente, também perdem os dados. A confirmação lista os targets do ambiente atual que usam o mesmo perfil.
 
 ### Aviso "sinalização de linha de comando não suportada"
 

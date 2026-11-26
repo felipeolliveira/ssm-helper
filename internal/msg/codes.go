@@ -98,6 +98,14 @@ const (
 	ChromeOpenFailed = "CHROME_OPEN_FAILED" // detail
 	ChromeCommand    = "CHROME_COMMAND"     // detail: the command line used
 	ChromeOpened     = "CHROME_OPENED"      //
+	ChromeClosed     = "CHROME_CLOSED"      // profile
+
+	// Clearing the data of a Chrome profile (ssm-helper-data/chrome-<profile>)
+	ChromeProfileClosing     = "CHROME_PROFILE_CLOSING"      // profile
+	ChromeProfileCleared     = "CHROME_PROFILE_CLEARED"      // profile
+	ChromeProfileInUse       = "CHROME_PROFILE_IN_USE"       // profile; detail
+	ChromeProfileClearFailed = "CHROME_PROFILE_CLEAR_FAILED" // profile; detail
+	ChromeProfileBusy        = "CHROME_PROFILE_BUSY"         // profile
 
 	// Data folder (ssm-helper-data)
 	DataDirCreateFailed = "DATA_DIR_CREATE_FAILED" // dir; detail
