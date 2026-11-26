@@ -286,6 +286,15 @@ A conversão dos ambientes só acontece enquanto não existe nenhum `env*.json` 
 
 ## Solução de problemas
 
+Quando algo der errado e você precisar de ajuda, envie o **arquivo de diagnóstico**: o botão **Arquivo de diagnóstico**, na tela Sobre ou no painel de Log, salva `ssm-helper-troubleshooting-<data>.zip` (a pasta Downloads é sugerida) e o mostra no Explorer. Ele contém:
+
+- a versão e o build do app (`about.json`);
+- o ambiente ativo, os túneis, se cada sessão SSO está válida e as preferências (`state.json`);
+- os arquivos de ambiente (`environments/`);
+- os logs dos últimos 7 dias (`logs/`).
+
+SSO URLs, números de conta (menos os 4 últimos dígitos), SSM targets, hosts remotos, domínios e URLs viram `••••••••` em todos os arquivos. O cache do SSO (tokens), os perfis do Chrome (cookies e logins) e os dados do WebView nunca entram. Mesmo assim, o arquivo não é anônimo: nomes de perfis, roles e targets, regiões, portas, o seu usuário do Windows (nas pastas do app) e mensagens de erro da AWS continuam visíveis. O arquivo é salvo apenas no seu computador, e o app não envia nada. Antes de salvar, o app pede confirmação e lembra disso. Compartilhe apenas com o time de suporte ou com pessoas de confiança, e apague o arquivo depois de enviar.
+
 | Sintoma | Causa provável |
 |---|---|
 | O Windows bloqueia o `.exe` (SmartScreen ou antivírus) | O executável não é assinado. Fale com a TI para liberar o arquivo |

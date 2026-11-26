@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react'
 import {AboutInfo, api, Message, toMessage} from '../api'
 import {Icon} from '../components/Icon'
+import TroubleshootingButton from '../components/TroubleshootingButton'
 import {useI18n} from '../i18n'
 
 export default function AboutView() {
@@ -8,6 +9,7 @@ export default function AboutView() {
     const [info, setInfo] = useState<AboutInfo | null>(null)
     const [error, setError] = useState<Message | null>(null)
     const [copied, setCopied] = useState(false)
+    const [saveError, setSaveError] = useState<Message | null>(null)
 
     useEffect(() => {
         api.about().then(setInfo).catch(err => setError(toMessage(err)))
@@ -71,6 +73,7 @@ export default function AboutView() {
                     {info.copyright && <p className="muted small">{info.copyright}</p>}
                 </div>
                 <div className="spacer"/>
+                <TroubleshootingButton className="btn" onError={setSaveError}/>
                 <button className="btn" onClick={copy}>
                     <Icon name={copied ? 'check' : 'copy'}/> {copied ? t('about.copied') : t('about.copy')}
                 </button>
@@ -81,6 +84,7 @@ export default function AboutView() {
                 )}
             </header>
 
+            {saveError && <div className="alert error">{tm(saveError)}</div>}
             {section(t('about.build'), build)}
             {section(t('about.components'), components)}
 
