@@ -7,25 +7,6 @@ import {ClipboardSetText} from '../../wailsjs/runtime/runtime'
 import {Secret, useSecretText} from '../privacy'
 import {useI18n} from '../i18n'
 
-// Copies the local address of a tunnel, for curl, Postman or a database client.
-function CopyButton({text}: {text: string}) {
-    const {t} = useI18n()
-    const [copied, setCopied] = useState(false)
-    const copy = async () => {
-        if (await ClipboardSetText(text)) {
-            setCopied(true)
-            setTimeout(() => setCopied(false), 1500)
-        }
-    }
-    return (
-        <button className={`btn ghost icon-only copy-inline ${copied ? 'copied' : ''}`} onClick={copy}
-                title={copied ? t('targets.addressCopied') : t('targets.copyAddress', {address: text})}
-                aria-label={t('targets.copyAddress', {address: text})}>
-            <Icon name={copied ? 'check' : 'copy'} size={13}/>
-        </button>
-    )
-}
-
 function linkToURL(link: string) {
     return /^https?:\/\//.test(link) ? link : `https://${link}`
 }
@@ -206,5 +187,24 @@ function TargetCard({envName, target, state, loggedIn, region, autoChrome, chrom
                 </ConfirmDialog>
             )}
         </article>
+    )
+}
+
+// Copies the local address of a tunnel, for curl, Postman or a database client.
+function CopyButton({text}: {text: string}) {
+    const {t} = useI18n()
+    const [copied, setCopied] = useState(false)
+    const copy = async () => {
+        if (await ClipboardSetText(text)) {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1500)
+        }
+    }
+    return (
+        <button className={`btn ghost icon-only copy-inline ${copied ? 'copied' : ''}`} onClick={copy}
+                title={copied ? t('targets.addressCopied') : t('targets.copyAddress', {address: text})}
+                aria-label={t('targets.copyAddress', {address: text})}>
+            <Icon name={copied ? 'check' : 'copy'} size={13}/>
+        </button>
     )
 }
